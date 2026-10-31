@@ -2,6 +2,8 @@
 
 *An entry for the #TorchTPUSprint. Everything below was measured on a Cloud TPU v6e-1 in us-east5-b, with torch 2.15.0, torch_tpu 0.2.0, Captum 0.9.0 and transformers 5.22.1 unless stated otherwise. Code, scripts and raw findings: [github.com/joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu); see "Where everything lives" at the end.*
 
+![Explainability as a TorchTPU performance lens](images/00_cover.png)
+
 ---
 
 ## TL;DR
@@ -74,6 +76,8 @@ By default TorchTPU runs float32 matmuls with bfloat16 inputs on the MXU. Model 
 | LayerGradCam | 1.0e-2 | 2.2e-7 |
 | GradientShap | 3.6e-2 | 2.5e-2 (stochastic) |
 
+![Max relative error vs CPU, default vs highest matmul precision](images/01_precision_default_vs_highest.png)
+
 On a real transformer, Qwen3-0.6B in fp32 with precision "highest", Captum's `LayerIntegratedGradients` CPU versus TPU on the prompt "The capital of France is" with target " Paris" has a maximum relative error of 8.5e-6 and the same top-3 attributed tokens (" France", " of", "The").
 
 The surprising part: **"highest" costs almost nothing for attribution.** On Qwen3-0.6B at 32 and 128 steps, eager warm times were 0.86 s and 1.17 s at "highest" versus 0.88 s and 1.08 s at "high". The workload is not MXU-bound at this size; it is bound by dispatch and host-device traffic, as the profiles in section 5 show. So: set it, always, for attribution.
@@ -85,6 +89,8 @@ We briefly built our own batched IG (`torchtpu_xai`) on the theory that batching
 First, Captum already does that. When `internal_batch_size` is None, `IntegratedGradients` expands the input to `n_steps × batch` and runs one forward and backward pass. Our timings were identical to Captum's. The "differentiator" was not one, and we repositioned the project around Captum itself.
 
 Second, our IG disagreed with Captum by 0.71 relative error on Qwen3. That looked like a bug. It was not. Captum defaults to Gauss-Legendre quadrature; ours used right-Riemann. With `method="riemann_right"` and the same steps, the two agreed to the printed digit. The real finding was that **the reference itself had not converged**: Captum on CPU with 256 Gauss-Legendre steps had a convergence delta of 27.3 against a total attribution of 44.4, and the total swung from -26.6 to -8.2 to +44.4 across 32, 128 and 256 steps. Raw-logit target plus pad-token baseline is a poor Integrated Gradients setup for an LLM. The advice that came out of it, and that went into the docs: always request `return_convergence_delta=True` and look at it before trusting an attribution. Not TPU-specific, but TPU made it cheap enough to run the sweep that exposed it.
+
+![IG total attribution vs steps on Qwen3-0.6B](images/07_ig_convergence_qwen3.png)
 
 ---
 
@@ -99,6 +105,8 @@ TorchTPU has three ways to run a program: strict eager (each op dispatched as it
 | 32 | 4.48 s | 0.880 s | **0.238 s** (first call 26 s) | 0.176 s (first call 68 to 112 s) |
 | 128 | 17.04 s | 1.078 s | **0.450 s** (first call 29 s) | OOM (see memory section) |
 
+![LayerIntegratedGradients on Qwen3-0.6B across execution modes](images/02_execution_modes_53tok.png)
+
 DeferAndFuse makes *unmodified Captum* 3.7x faster than strict eager and 38x faster than CPU at 128 steps, with no code change. The cost is a 26 to 29 s fusion compile on the first call.
 
 ### The shipped example: Qwen3-0.6B, 42-token prompt, 64 steps, precision "highest"
@@ -110,6 +118,8 @@ This is the run behind `examples/explainability/captum_attribution.py` in the to
 | strict eager | 0.80 s | 5 s | 9.2e-05 | 10.6 GiB |
 | DeferAndFuse | 0.36 s | 43 s | 9.3e-05 | 11.1 GiB |
 | `torch.compile(backend="tpu")` | 0.16 s | 130 s | 7.0e-05 | 15.3 GiB |
+
+![The shipped example in three execution modes](images/03_shipped_example_modes.png)
 
 On a tiny MLP the same three modes take 0.065, 0.039 and 0.062 s, with 2e-7 relative error in all of them. The compiled mode's advantage only appears once there is enough work per call to amortize the graph launch.
 
@@ -130,6 +140,8 @@ We profiled LIG with 32 steps in each mode using `torch.profiler` with `Profiler
 | strict eager | 1.93 s | 1.35 s (70%) | 522 | 2.6 ms | 5.0 s |
 | DeferAndFuse | 0.78 s | 0.29 s | 522 | 0.57 ms | 1.23 s |
 
+![XProf: aten::_to_copy share of host time](images/04_xprof_to_copy.png)
+
 The story is one line: **in strict eager, 70% of host time is `aten::_to_copy`**, host-to-device and device-to-host copies that block the Python thread. Captum moves scalars and small tensors across the boundary constantly: step sizes, the scaling of inputs along the path, the `cumsum` offsets it uses to slice layer outputs. Each one is a blocking round trip in strict eager. DeferAndFuse does the same number of copies but each one costs a fifth as much, because the copies no longer wait for the preceding ops to finish individually.
 
 That is why the docs case study is titled "Explainability as a performance lens". Attribution is small enough to profile in minutes and pathological enough to make the execution-mode differences obvious in a single table.
@@ -142,6 +154,8 @@ Two fixes, both in user code:
 
 - `model(input_ids, logits_to_keep=1)` (transformers v5) keeps only the last position. With it, 128 steps in one batch took 0.857 s warm on TPU (23.9 GB peak) versus 11.2 s on CPU.
 - Captum's `internal_batch_size` chunks the steps. 128 steps with `internal_batch_size=64` ran in 1.42 s at 10.6 GiB peak, versus 23.9 GB unchunked.
+
+![Peak HBM by step count and internal_batch_size](images/05_peak_hbm_steps.png)
 
 The new docs section on `torch.accelerator` memory APIs (`memory_stats`, `max_memory_allocated`, `empty_cache` and friends, branch `docs-memory-apis`) came out of needing these numbers.
 
@@ -162,6 +176,8 @@ Captum's IG scales inputs by per-step Python floats. We wrote `scripts/scalar_le
 | after `empty_cache()` | none released |
 
 Confirmed. And Captum triggers it: 20 IG calls with the same `n_steps` leaked nothing, but sweeping `n_steps` from 10 to 109 leaked **+6361** buffers, because each `n_steps` produces a new set of step-size floats.
+
+![Scalar buffer leak before and after the fix](images/06_scalar_buffer_leak.png)
 
 Fix: a bounded per-thread cache in `MakeBuffer` in `csrc/eager/op_dispatcher.cc`, plus `tests/scalar_buffer_cache_test.py`. On the patched wheel the same 5000-scalar loop leaks +903 (the 1024-entry cache clearing four times) and the Captum sweep +280. PR google-pytorch/torch_tpu#6102, open.
 
@@ -235,6 +251,8 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/capt
 
 ## 9. Where everything lives
 
+![Contributions map](images/08_contributions_map.png)
+
 **Open upstream**
 
 - google-pytorch/torch_tpu#6102: bounded scalar buffer cache (fixes #6036)
@@ -250,7 +268,7 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/capt
 
 **In this repository** ([joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu))
 
-- `blog_captum_torchtpu.md`: this post
+- `blog_captum_torchtpu.md`: this post; figures in `images/`, regenerated by `scripts/make_blog_images.py`
 - `FINDINGS.md`: the raw numbers, in the order we found them
 - `scripts/`: every benchmark, probe and repro mentioned above, plus `tpu_vm.sh` to create, set up and delete the VM
 - `captum_on_torchtpu.ipynb`: the notebook version of sections 2 to 5
