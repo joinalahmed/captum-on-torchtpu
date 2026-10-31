@@ -1,0 +1,13 @@
+[project]
+name = "torchtpu-xai"
+version = "0.0.1"
+description = "Explainability for PyTorch models on TPUs via TorchTPU"
+requires-python = ">=3.9"
+dependencies = ["torch"]
+
+[project.optional-dependencies]
+hf = ["transformers>=5"]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["torchtpu_xai"]
