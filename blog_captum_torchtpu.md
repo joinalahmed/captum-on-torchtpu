@@ -1,6 +1,6 @@
 # Explainability as a TorchTPU performance lens: Captum on Cloud TPUs, and what it taught us about TorchTPU
 
-*An entry for the #TorchTPUSprint. Everything below was measured on a Cloud TPU v6e-1 in us-east5-b, with torch 2.15.0, torch_tpu 0.2.0, Captum 0.9.0 and transformers 5.22.1 unless stated otherwise. Code, scripts and raw findings: see "Where everything lives" at the end. TODO before publishing: push this project folder to a public repository and link it here.*
+*An entry for the #TorchTPUSprint. Everything below was measured on a Cloud TPU v6e-1 in us-east5-b, with torch 2.15.0, torch_tpu 0.2.0, Captum 0.9.0 and transformers 5.22.1 unless stated otherwise. Code, scripts and raw findings: [github.com/joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu); see "Where everything lives" at the end.*
 
 ---
 
@@ -248,8 +248,9 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/capt
 
 - `missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`
 
-**In this repository**
+**In this repository** ([joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu))
 
+- `blog_captum_torchtpu.md`: this post
 - `FINDINGS.md`: the raw numbers, in the order we found them
 - `scripts/`: every benchmark, probe and repro mentioned above, plus `tpu_vm.sh` to create, set up and delete the VM
 - `captum_on_torchtpu.ipynb`: the notebook version of sections 2 to 5
