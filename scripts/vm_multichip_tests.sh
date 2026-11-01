@@ -23,7 +23,7 @@ if [ ! -d ~/env_fix ]; then
   uv venv -q --python 3.14 ~/env_fix
   uv pip install -q --python ~/env_fix/bin/python "torch==${TORCH_PIN:-2.11.0+cpu}" --index-url https://download.pytorch.org/whl/cpu
   # The wheel is installed --no-deps, so libtpu (the PjRT plugin) must be installed explicitly.
-  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.50" "transformers>=5" accelerate captum pytest scikit-learn absl-py parameterized numpy portpicker
+  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.50" "transformers>=5" accelerate captum pytest scikit-learn absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq
 fi
 PY=~/env_fix/bin/python
 
@@ -61,8 +61,8 @@ run_branch() {
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_max_unpool" ;;
       cpu-view-args-split-compile)
         pyt tests/compile/split_compile_test.py -k "cpu_view_argument"
-        # split_compile_test is tagged requires-tpu-v5lite only, so that is its only generated variant.
-        bzt //tests/compile:split_compile_test_tpu-v5lite --test_filter="*test_cpu_view_argument_to_tpu_partition*" ;;
+        # tests/compile has no run_on_accelerators variants; the target carries its plain name.
+        bzt //tests/compile:split_compile_test --test_filter="*test_cpu_view_argument_to_tpu_partition*" ;;
       missing-ops-batch)
         pyt tests/ops_unit_test.py -k "piecewise or smooth_l1 or huber or logaddexp or nansum or std_mean or trace or addbmm"
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_logaddexp TestOps.test_nansum TestOps.test_std_mean TestOps.test_trace TestOps.test_addbmm TestOps.test_smooth_l1_loss TestOps.test_huber_loss" ;;
