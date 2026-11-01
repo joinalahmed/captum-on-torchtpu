@@ -170,8 +170,11 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
 - google-pytorch/torch_tpu#6106 (CPU view args in split compile) - open, CI green.
 - meta-pytorch/captum#1952 (LIG cumsum as Python ints) - open.
 - #4408 triage comment posted (no NaN on 0.2.0; compiled/CPU rel err 1.85e-5).
-- Branches pushed, PR creation blocked by GitHub permission error: `docs-memory-apis`, `loader-import-error-context`,
-  `missing-ops-batch`, `explainability-example`.
+- Branches pushed, PR creation blocked by GitHub: `docs-memory-apis`, `loader-import-error-context`, `missing-ops-batch`,
+  `explainability-example`, `dynamism-denylist-triage`. Retried 2026-11-01 09:35 (+03): GraphQL `createPullRequest` still refused,
+  REST `POST /pulls` returns 404, while a no-op PATCH of our own PR #6106 succeeds and rate limits are untouched. So the account can
+  write to the repo but not open PRs there; fork PR creation works. Next step: open from the web compare pages while signed in.
+- google-cla[bot] on #6102: CLA not yet signed; the check fails until it is.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
