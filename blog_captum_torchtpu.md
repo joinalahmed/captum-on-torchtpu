@@ -313,7 +313,7 @@ For Captum, `tests/attr/test_accelerator.py` ([meta-pytorch/captum#1951](https:/
 - `captum_on_torchtpu.ipynb`: notebook version of sections 2 to 5
 - `reports/Explainability tools on TPUs.md`: the prior-art survey
 
-**Cost.** All of this ran on a single v6e-1 that was created and deleted per work session. Both the VM and its disk are billed while they exist.
+**Cost.** The single-chip work ran on a v6e-1 created and deleted per work session; the four-chip section ran on one v6e-4 obtained through a queued resource after several hours of waiting for capacity. Both the VMs and their disks are billed while they exist.
 
 ---
 
