@@ -12,7 +12,7 @@
 - Attribution results depend on the matmul precision setting. With the default, TPU attributions differ from CPU by roughly 1e-3 (1e-2 for LayerGradCam). With `torch.set_float32_matmul_precision("highest")` they agree to about 1e-7 on small models and 1e-5 on Qwen3-0.6B. The setting has no measurable cost for this workload.
 - Attribution is a useful workload for comparing execution modes. On Qwen3-0.6B, Layer Integrated Gradients with 64 steps takes 0.80 s in strict eager mode, 0.36 s with DeferAndFuse, and 0.16 s under `torch.compile(backend="tpu")`. The same computation on CPU takes between 4 and 17 s depending on the number of steps.
 - Working through this surfaced several TorchTPU issues: a leak of device buffers for Python scalars, a missing `max_unpool2d` lowering, a compiled-mode bug that read CPU view arguments past their buffer, a Captum bug that placed a CPU tensor in the compiled graph, eight unregistered ops, and 11 stale entries on the bounded-dynamism deny list. Five pull requests are open upstream. Five more branches are pushed and tracked by issues while the repository's limit of three open PRs per outside contributor frees up.
-- On a four-chip v6e-4 the same results hold, and every fix passes the bazel tests upstream CI runs. Multi-chip attribution is one worker per chip under torchrun; sharding Integrated Gradients across four chips matches the single-chip result to 5.6e-8 and pays off only once the step count no longer fits one chip (1.67x at 256 steps, slower at 64).
+- On a four-chip v6e-4 the same results hold, and every fix passes the bazel tests upstream CI runs and the matching pytest files. A device-side trace of one attribution call shows why eager mode is slow at small sizes: 363 XLA programs per call, a 2% TensorCore duty cycle, and half of the device op time spent splitting 64-bit Python scalars. Multi-chip attribution is one worker per chip under torchrun; sharding Integrated Gradients across four chips matches the single-chip result to 5.6e-8 and pays off only once the step count no longer fits one chip (1.67x at 256 steps, slower at 64).
 
 ---
 
@@ -152,6 +152,23 @@ We profiled `LayerIntegratedGradients` with 32 steps in each mode using `torch.p
 In strict eager mode, 70% of host time is spent in `aten::_to_copy`, that is, in host-to-device and device-to-host copies that block the Python thread. Captum moves scalars and small tensors across the host-device boundary frequently: step sizes, the scaling of inputs along the integration path, and the `cumsum` offsets used to slice layer outputs. In strict eager mode each of these is a synchronous round trip. DeferAndFuse performs the same number of copies, but each costs about a fifth as much, because a copy no longer waits for each preceding operation to complete individually.
 
 This is why the docs case study is called "Explainability as a performance lens": attribution is small enough to profile in minutes, and the differences between execution modes show up clearly in a single operator table.
+
+### The device side of the same picture
+
+A trace of one warm 50-step `IntegratedGradients` call on the small MLP, captured on one chip of the v6e-4 with `torch_tpu._internal.profiler` and read with the XProf tools, shows what the host-side table implies.
+
+| Metric | Value |
+|---|---|
+| Profiled window | 23.3 ms |
+| XLA programs launched for one call | 363 |
+| Gaps between programs (median 57 us) | 22.3 ms, 95.8% of the window |
+| TensorCore duty cycle | 2.0% |
+| Device op time | 476 us |
+| `X64SplitLow` / `X64SplitHigh` custom calls (302) | 231 us, 48.6% of op time |
+| The MLP's four matmul fusions | 5.2 us, 0.02% of the window |
+| MXU utilization | 0.0% |
+
+Eager TorchTPU dispatches one XLA program per PyTorch op, so an attribution over 50 interpolation points is 363 launches with a median gap of 57 us between them, and the TensorCore is idle for 98% of the call. Half of the device op time goes to `X64SplitLow` and `X64SplitHigh`, the custom calls that split 64-bit Python scalars into two 32-bit halves on arrival; this is the same scalar path as the buffer leak in section 6.1. The matmuls that constitute the model are 5 microseconds. On a model this small, eager attribution is launch-bound from both the host and the device side, and the remedies are the ones in section 4, DeferAndFuse or `torch.compile`, rather than a faster chip. The trace and the full report are in `tpu_agent_project/results/`.
 
 ### Memory
 
@@ -312,8 +329,10 @@ For Captum, `tests/attr/test_accelerator.py` ([meta-pytorch/captum#1951](https:/
 - `scripts/`: every benchmark, probe and reproduction referenced above, plus `tpu_vm.sh` for creating, setting up and deleting the VM
 - `captum_on_torchtpu.ipynb`: notebook version of sections 2 to 5
 - `reports/Explainability tools on TPUs.md`: the prior-art survey
+- `results/v6e-4/`: the four-chip attribution matrix, the sharded IG numbers and every branch's multi-chip test log
+- `tpu_agent_project/` and `blog_explainability_agent_assisted.md`: the same workload dispatched through Google's TPU agent suite, with the XProf report quoted in section 5
 
-**Cost.** The single-chip work ran on a v6e-1 created and deleted per work session; the four-chip section ran on one v6e-4 obtained through a queued resource after several hours of waiting for capacity. Both the VMs and their disks are billed while they exist.
+**Cost.** The single-chip work ran on a v6e-1 created and deleted per work session; the four-chip section ran on one v6e-4 obtained through a queued resource after several hours of waiting for capacity. Both the VMs and their disks are billed while they exist; everything was deleted when the work finished.
 
 ---
 
