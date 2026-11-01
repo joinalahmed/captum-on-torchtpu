@@ -1,8 +1,16 @@
 """torch_tpu #6036: eager device buffers for distinct Python scalars are never evicted. Reproduce on the 0.2.0
 wheel, then check whether Captum IG (which scales inputs by per-step Python floats) triggers it."""
-import gc, torch, torch.nn as nn
+import gc, os, torch, torch.nn as nn
 from captum.attr import IntegratedGradients
 tpu = torch.device("tpu")
+
+# Under torchrun (one worker per chip) join the tpu_dist group so each rank owns its own chip,
+# and tag every line with the rank.
+if "WORLD_SIZE" in os.environ and int(os.environ["WORLD_SIZE"]) > 1:
+    import builtins, torch.distributed as dist
+    dist.init_process_group(backend="tpu_dist")
+    _print = builtins.print
+    print = lambda *a, **k: _print(f"[rank {dist.get_rank()}]", *a, **k, flush=True)
 
 def live():
     torch.accelerator.synchronize(); gc.collect()

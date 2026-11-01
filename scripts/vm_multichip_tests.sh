@@ -54,7 +54,8 @@ run_branch() {
       fix-scalar-buffer-cache-bound)
         pyt tests/scalar_buffer_cache_test.py
         $PY ~/scalar_leak_check.py 2>&1 | filt
-        echo "--- multi-device: one process per chip"; for i in $(seq 0 $((CHIPS-1))); do TPU_VISIBLE_CHIPS=$i TPU_PROCESS_BOUNDS=1,1,1 TPU_CHIPS_PER_PROCESS_BOUNDS=1,1,1 $PY ~/scalar_leak_check.py 2>&1 | filt | tail -2 & done; wait ;;
+        echo "--- multi-device: one torchrun worker per chip"
+        ( eval $($PY -m torch.tpu.distributed 2>/dev/null | sed "s/^/export /"); PYTHONPATH=. $PY -m torch.distributed.run --nproc_per_node=$WORLD_SIZE ~/scalar_leak_check.py 2>&1 | grep "^\[rank" | sort ) ;;
       max-unpool2d)
         pyt tests/ops_unit_test.py -k "unpool"
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_max_unpool" ;;
