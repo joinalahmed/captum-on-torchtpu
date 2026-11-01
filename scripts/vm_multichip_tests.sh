@@ -32,7 +32,7 @@ build_and_install() {
   local rc=$?; echo "BUILD_EXIT=$rc" >> ~/build_$1.log
   [ $rc -eq 0 ] || { log "$1: BUILD FAILED"; grep -nE "^ERROR|error:" ~/build_$1.log | head -10 >> ~/multichip_summary.log; return 1; }
   WHL=$(ls -t bazel-bin/ci/wheel/torch_tpu-*.whl | head -1)
-  ~/env_fix/bin/pip install -q --force-reinstall --no-deps "$WHL" 2>&1 | tail -1
+  uv pip install -q --python ~/env_fix/bin/python --reinstall --no-deps "$WHL" 2>&1 | tail -1
 }
 pyt() { PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider "$@" 2>&1 | filt | tail -4; }
 bzt() { bazel test "$@" --config=no_rbe --local_test_jobs=1 --cache_test_results=no --test_output=errors 2>&1 | grep -E "^//|PASSED|FAILED|Executed|ERROR" | tail -6; }
@@ -77,7 +77,7 @@ print("hbm_bytes_per_device", torch.tpu.get_device_properties().hbm_bytes_per_de
 EOF
         ;;
       explainability-example)
-        ~/env_fix/bin/pip install -q captum "transformers>=5" 2>&1 | tail -1
+        uv pip install -q --python ~/env_fix/bin/python captum "transformers>=5" accelerate 2>&1 | tail -1
         $PY examples/explainability/captum_attribution.py 2>&1 | filt | tail -8
         TORCH_TPU_DEFER_AND_FUSE=1 $PY examples/explainability/captum_attribution.py 2>&1 | filt | tail -8
         $PY examples/explainability/captum_attribution.py --compile 2>&1 | filt | tail -8 ;;
