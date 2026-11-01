@@ -179,6 +179,9 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
 - Issues filed 2026-11-01 to claim the blocked branches: #6111 missing-ops-batch, #6112 dynamism-denylist-triage,
   #6113 loader-import-error-context, #6114 explainability-example; docs-memory-apis is a comment on #4413.
 - PR #6106 retitled "Fix compiled TPU partitions reading CPU view arguments past their buffer".
+- Approach comments posted on #6111-#6114 (`comment_61xx_approach.md`). Self-assignment is impossible: GitHub only allows
+  collaborators/org members as assignees (`/repos/.../assignees/joinalahmed` -> 404) and the repo has no `/assign` bot; each
+  comment asks a maintainer to assign.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
