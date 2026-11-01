@@ -230,7 +230,38 @@ Eleven ops pass in both modes: `eq`, `maximum`, `ne`, `neg`, `pow`, `remainder`,
 
 ---
 
-## 7. What this adds to TorchTPU and Captum
+## 7. Four chips: what changes and what does not
+
+Everything above ran on a single v6e chip. A v6e-4 (four chips on one host, us-east5-b) answers two questions: do the results hold on a multi-chip host, and does splitting an attribution across chips help.
+
+**Process model.** libtpu is exclusive per process. A second process that touches the TPU while one is running fails with "The TPU is already in use by process with pid N". Multi-chip work on TorchTPU is therefore one worker process per chip, launched with torchrun after exporting the slice topology:
+
+```bash
+eval $(python -m torch.tpu.distributed | sed 's/^/export /')
+torchrun --nproc_per_node=$WORLD_SIZE captum_multichip_ig.py --steps 256
+```
+
+Inside a worker, `torch.accelerator.device_count()` is 1 and `torch.device("tpu")` is that worker's chip. The `tpu_dist` backend gives the usual `torch.distributed` collectives.
+
+**Correctness.** The 38-method attribution matrix on chip 0 of the v6e-4 gives the same result as the v6e-1: 27 methods match CPU, 11 stochastic methods run. Sharding Integrated Gradients across the four chips, where each rank evaluates a quarter of the Riemann grid in one batched forward and backward pass and an `all_reduce` assembles the attribution, reproduces Captum's single-chip `LayerIntegratedGradients` to a relative error of 5.6e-8 when both sides use the same batch size, and 1.2e-4 when they do not (the matmul reduction order differs, as in section 3).
+
+**Speed.** Qwen3-0.6B, fp32, 53 tokens, strict eager, released wheel:
+
+| n_steps | 4 chips, sharded | 1 chip, Captum | speedup |
+|---|---|---|---|
+| 64 | 0.355 s | 0.219 s (all 64 in one batch) | 0.62x |
+| 256 | 0.327 s | 0.547 s (`internal_batch_size=64`) | 1.67x |
+| 256 | 0.357 s | out of memory in a single batch | - |
+
+At 64 steps one chip finishes the whole batch in a fifth of a second, and splitting it four ways costs more in dispatch and all-reduce than it saves. At 256 steps a single chip cannot hold the batch (the same out-of-memory failure as on the v6e-1), Captum has to chunk it into four sequential pieces, and the four chips run those pieces in parallel. The gain is 1.67x rather than 4x because per-chunk fixed costs and the all-reduce are not amortised at this size. Multi-chip attribution pays off when the step count or the model pushes a single chip past its memory, not before.
+
+**The fixes on four chips.** Each branch was rebuilt from source on the 4-chip host and run through the same bazel targets upstream CI uses, with the `_tpu-v6e` variant: the bounded scalar cache test passes with leak counts identical to the single chip; the `max_unpool`, eight-op and eleven-op dynamic tests pass; the loader test passes; the memory APIs return per-process values; the shipped example runs in all three modes at a relative error of 2.0e-7 against CPU. Raw logs are in the repository under `results/v6e-4/`.
+
+**What was not covered.** The v5e-8 that upstream CI runs on, and the distributed test suite under `tests/distributed/`, were out of reach: v5e capacity in the project's zones was unavailable all day and a v5litepod-8 exceeds the project's 4-chip per-zone serving quota. Towards the end of the session the host-side TPU session manager started refusing every process (`tpunetd START_SESSION failed`), which a guest reboot did not clear; the remaining reruns stopped there.
+
+---
+
+## 8. What this adds to TorchTPU and Captum
 
 The `explainability-example` branch adds to torch_tpu:
 
@@ -241,14 +272,14 @@ For Captum, `tests/attr/test_accelerator.py` ([meta-pytorch/captum#1951](https:/
 
 ---
 
-## 8. Before you try this
+## 9. Before you try this
 
 - Strict eager and DeferAndFuse work on torch_tpu 0.2.0 as released. Compiled mode needs two patches that are not yet merged (Captum [#1952](https://github.com/meta-pytorch/captum/pull/1952), torch_tpu [#6106](https://github.com/google-pytorch/torch_tpu/pull/6106)). Until they land, DeferAndFuse is the option that requires no changes.
 - Five branches (`missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`) are pushed to the fork but do not yet have upstream pull requests. The repository allows users without write access three open PRs, and the first three fill that quota. Each branch is tracked by an issue ([#6111](https://github.com/google-pytorch/torch_tpu/issues/6111) to [#6114](https://github.com/google-pytorch/torch_tpu/issues/6114), and a comment on [#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)) so review can begin before the PR exists.
 
 ---
 
-## 9. Where everything lives
+## 10. Where everything lives
 
 ![Contributions map](https://raw.githubusercontent.com/joinalahmed/captum-on-torchtpu/main/images/08_contributions_map.png)
 
