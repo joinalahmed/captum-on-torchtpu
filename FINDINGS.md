@@ -202,9 +202,9 @@ Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests
   | branch | bazel (as CI runs it) | pytest against the installed wheel |
   |---|---|---|
   | fix-scalar-buffer-cache-bound | - | `scalar_buffer_cache_test.py` 3 passed; leak counts identical to v6e-1 (+2 / +903 / +0 / +280) |
-  | max-unpool2d | `ops_test_tpu-v6e` (test_max_unpool*) PASSED | not run (test deps) |
-  | cpu-view-args-split-compile | target name wrong in the loop, rerun pending | `split_compile_test.py -k cpu_view_argument` 4 passed |
-  | missing-ops-batch | `ops_test_tpu-v6e` (7 ops) PASSED | not run (test deps) |
+  | max-unpool2d | `ops_test_tpu-v6e` (test_max_unpool*) PASSED | `ops_unit_test.py -k unpool` 25 passed |
+  | cpu-view-args-split-compile | `//tests/compile:split_compile_test` (cpu_view_argument) PASSED | `split_compile_test.py -k cpu_view_argument` 4 passed |
+  | missing-ops-batch | `ops_test_tpu-v6e` (7 ops) PASSED | `ops_unit_test.py` (8 ops) 53 passed |
   | dynamism-denylist-triage | `ops_test_dynamic_tpu-v6e` and `ops_test_dynamic_compiled_tpu-v6e` (11 ops) PASSED | - |
   | loader-import-error-context | `_versioned_so_loader_test` PASSED | 16 failed: the test inspects the repo package layout, invalid against a wheel |
   | docs-memory-apis | - | memory_allocated / max_memory_allocated / memory_reserved / get_memory_info / hbm_bytes_per_device all return sane values |
@@ -217,9 +217,14 @@ Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests
   `gcloud compute tpus tpu-vm stop` is not supported for queued-resource nodes, and the node still reports HEALTHY. The last thing that
   touched the TPU before the failure was a 4-worker torchrun from an env whose `libtpu` had just been downgraded to 0.0.50 by the repo
   requirements lock (the released env uses 0.0.51); whether that is cause or coincidence is unknown. Retried every ~3 min for 35 min
-  with no recovery; the node was deleted at 12:20 UTC on 2026-11-01. Build disks kept. Not completed on multi-chip: pytest halves of
-  max-unpool2d and missing-ops-batch (their bazel targets pass), `//tests/compile:split_compile_test` for the CPU-view branch (pytest
-  4 passed), and the per-chip torchrun leak check.
+  with no recovery; the node was deleted at 12:20 UTC on 2026-11-01. Build disks kept.
+- A second v6e-4 was queued with the cache disk and landed at 13:45 UTC (fresh boot disk; setup from the disk cache took 7 min, each
+  branch rebuild ~9 min). The items the wedged host had blocked all completed (`results/v6e-4/run2/`): the pytest halves of
+  max-unpool2d (25 passed) and missing-ops-batch (53 passed) once `attrs` and `cattrs` were added to the from-source env,
+  `//tests/compile:split_compile_test` for the CPU-view branch (PASSED), and the per-chip torchrun leak check, where all four ranks
+  report the same counts as the single chip (+2 / +903 / +0 / +280). The table above reflects the final state. The same libtpu
+  0.0.51 was used in both envs this time and the host stayed healthy, which is weak evidence for the 0.0.50-downgrade theory above.
+  Still uncovered: a v5e-8 (quota) and `tests/distributed/`.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.

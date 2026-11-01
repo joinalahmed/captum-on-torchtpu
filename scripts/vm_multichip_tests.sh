@@ -23,7 +23,7 @@ if [ ! -d ~/env_fix ]; then
   uv venv -q --python 3.14 ~/env_fix
   uv pip install -q --python ~/env_fix/bin/python "torch==${TORCH_PIN:-2.11.0+cpu}" --index-url https://download.pytorch.org/whl/cpu
   # The wheel is installed --no-deps, so libtpu (the PjRT plugin) must be installed explicitly.
-  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.50" "transformers>=5" accelerate captum pytest scikit-learn absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq
+  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.50" "transformers>=5" accelerate captum pytest scikit-learn absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq attrs cattrs
 fi
 PY=~/env_fix/bin/python
 
