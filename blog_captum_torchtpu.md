@@ -165,7 +165,7 @@ The new docs section on `torch.accelerator` memory APIs (`memory_stats`, `max_me
 
 This is the part that turned a tutorial into a contribution sprint. Each item below started as something Captum did that a plain training loop does not.
 
-### 6.1 Eager scalar buffers leaked (issue #6036, PR #6102)
+### 6.1 Eager scalar buffers leaked (issue [#6036](https://github.com/google-pytorch/torch_tpu/issues/6036), PR [#6102](https://github.com/google-pytorch/torch_tpu/pull/6102))
 
 Captum's IG scales inputs by per-step Python floats. We wrote `scripts/scalar_leak_check.py` to check the open issue that eager device buffers for distinct Python scalars were never evicted:
 
@@ -179,29 +179,29 @@ Confirmed. And Captum triggers it: 20 IG calls with the same `n_steps` leaked no
 
 ![Scalar buffer leak before and after the fix](images/06_scalar_buffer_leak.png)
 
-Fix: a bounded per-thread cache in `MakeBuffer` in `csrc/eager/op_dispatcher.cc`, plus `tests/scalar_buffer_cache_test.py`. On the patched wheel the same 5000-scalar loop leaks +903 (the 1024-entry cache clearing four times) and the Captum sweep +280. PR google-pytorch/torch_tpu#6102, open.
+Fix: a bounded per-thread cache in `MakeBuffer` in `csrc/eager/op_dispatcher.cc`, plus `tests/scalar_buffer_cache_test.py`. On the patched wheel the same 5000-scalar loop leaks +903 (the 1024-entry cache clearing four times) and the Captum sweep +280. PR [google-pytorch/torch_tpu#6102](https://github.com/google-pytorch/torch_tpu/pull/6102), open.
 
 A side finding: on current main the strict-eager case no longer leaks thanks to a transfer refactor, but DeferAndFuse still does (+5001), so the fix still matters.
 
-### 6.2 `aten::max_unpool2d` missing (issue #6103, PR #6105)
+### 6.2 `aten::max_unpool2d` missing (issue [#6103](https://github.com/google-pytorch/torch_tpu/issues/6103), PR [#6105](https://github.com/google-pytorch/torch_tpu/pull/6105))
 
 We ported Captum's 78 attribution test configs into a device-generic suite that runs them on CPU and on `CAPTUM_TEST_DEVICE=tpu` and compares. 266 generated tests: 262 passed, 4 failed in 5 m 25 s.
 
 One failure was a tolerance miss at a near-zero attribution (+6.1e-5 versus -6.1e-5, precision noise). The other three were real: DeepLift's MaxPool rule calls `F.max_unpool2d`, and TorchTPU had no lowering for it. Every DeepLift variant on a CNN failed with `RuntimeError: operator 'aten::max_unpool2d' is not implemented for TPU`.
 
-We filed the issue, then implemented `max_unpool2d` and `max_unpool3d` as a native StableHLO batched scatter. 25 unit tests and 4 error-message tests pass on v6e, and the three DeepLift conv configs now pass. PR google-pytorch/torch_tpu#6105, open.
+We filed the issue, then implemented `max_unpool2d` and `max_unpool3d` as a native StableHLO batched scatter. 25 unit tests and 4 error-message tests pass on v6e, and the three DeepLift conv configs now pass. PR [google-pytorch/torch_tpu#6105](https://github.com/google-pytorch/torch_tpu/pull/6105), open.
 
-### 6.3 Compiled partitions read CPU view arguments past their buffer (PR #6106)
+### 6.3 Compiled partitions read CPU view arguments past their buffer (PR [#6106](https://github.com/google-pytorch/torch_tpu/pull/6106))
 
 The "expected tensor to be on tpu, got cpu" failure under `torch.compile` led somewhere unexpected. Reducing it, we found that `x * cpu_tensor[1].to(tpu)` under `torch.compile(backend="tpu")` returned zero. A StableHLO dump showed the compiled TPU partition being compiled against the *view's* strides and offset, while the argument is copied to the device as a contiguous tensor. The program read past the buffer it was given.
 
-The fix in `split_compiler.py` compiles against the contiguous layout the argument is actually copied with. Test added, verified on v6e, CI green. PR google-pytorch/torch_tpu#6106, open.
+The fix in `split_compiler.py` compiles against the contiguous layout the argument is actually copied with. Test added, verified on v6e, CI green. PR [google-pytorch/torch_tpu#6106](https://github.com/google-pytorch/torch_tpu/pull/6106), open.
 
-### 6.4 Captum captured a CPU tensor into the compiled graph (Captum PR #1952)
+### 6.4 Captum captured a CPU tensor into the compiled graph (Captum PR [#1952](https://github.com/meta-pytorch/captum/pull/1952))
 
-The other half of the compile failure was Captum's. `LayerIntegratedGradients` computes output offsets with `torch.cumsum` on a CPU tensor and uses the result to slice layer outputs. Under `torch.compile`, that CPU tensor became a graph input on the wrong device. Replacing it with Python ints fixes it; 12 LIG tests pass on TPU. meta-pytorch/captum#1952, open.
+The other half of the compile failure was Captum's. `LayerIntegratedGradients` computes output offsets with `torch.cumsum` on a CPU tensor and uses the result to slice layer outputs. Under `torch.compile`, that CPU tensor became a graph input on the wrong device. Replacing it with Python ints fixes it; 12 LIG tests pass on TPU. [meta-pytorch/captum#1952](https://github.com/meta-pytorch/captum/pull/1952), open.
 
-With #1952 and #6106 together, the compile row in section 4 exists: 0.16 s warm, 7.0e-05 relative error.
+With [#1952](https://github.com/meta-pytorch/captum/pull/1952) and [#6106](https://github.com/google-pytorch/torch_tpu/pull/6106) together, the compile row in section 4 exists: 0.16 s warm, 7.0e-05 relative error.
 
 ### 6.5 Eight unregistered ops (branch `missing-ops-batch`)
 
@@ -222,9 +222,9 @@ Eleven pass in both modes: `eq`, `maximum`, `ne`, `neg`, `pow`, `remainder`, `ro
 ### 6.7 Smaller things
 
 - **Loader error message** (branch `loader-import-error-context`): a from-source wheel only imports against the torch version pinned in the repo lockfile. The failure was a bare `undefined symbol c10::report_overflow`. The versioned extension loader now names the glue it picked and the PyTorch it found. Test added.
-- **Memory API docs** (branch `docs-memory-apis`, closes #4413): the `torch.accelerator` memory APIs documented in the API reference with numbers measured on v6e.
-- **Triage comment on #4408**: the reported NaN in compiled SDPA backward does not reproduce on 0.2.0 with torch 2.15 (Qwen3, compiled versus CPU relative error 1.85e-5). Posted.
-- **#4409** (compile plus backward on a view input) did not reproduce in our smoke test either; noted, not yet verified numerically.
+- **Memory API docs** (branch `docs-memory-apis`, closes [#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)): the `torch.accelerator` memory APIs documented in the API reference with numbers measured on v6e.
+- **Triage comment on [#4408](https://github.com/google-pytorch/torch_tpu/issues/4408)**: the reported NaN in compiled SDPA backward does not reproduce on 0.2.0 with torch 2.15 (Qwen3, compiled versus CPU relative error 1.85e-5). Posted.
+- **[#4409](https://github.com/google-pytorch/torch_tpu/issues/4409)** (compile plus backward on a view input) did not reproduce in our smoke test either; noted, not yet verified numerically.
 
 ---
 
@@ -235,17 +235,17 @@ The `explainability-example` branch adds to torch_tpu:
 - `examples/explainability/captum_attribution.py`: one script, flags for model (`tiny` or any HF causal LM), steps, runs, precision, `--compile`, `--internal-batch-size` and `--profile-dir`. It prints CPU reference time, first-call time, warm median, max relative error against CPU and peak HBM.
 - `docs/source/case_studies_explainability.py` and its export, a seven-section case study: run Captum on a TPU, set the matmul precision, compare the execution modes, read the XProf trace, bound peak memory, check convergence, run the example. Linked from the case-study index and the examples README. `mkdocs build --strict` passes.
 
-And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/captum#1951) that re-runs Captum's 78 attribution configs on CPU and any accelerator and compares, so "Captum works on TPU" stays a tested statement rather than a blog claim.
+And a test suite for Captum (`tests/attr/test_accelerator.py`, [meta-pytorch/captum#1951](https://github.com/meta-pytorch/captum/pull/1951)) that re-runs Captum's 78 attribution configs on CPU and any accelerator and compares, so "Captum works on TPU" stays a tested statement rather than a blog claim.
 
 ---
 
 ## 8. Honest caveats
 
 - The v6e-1 is a single chip. Nothing here says anything about multi-chip or SPMD.
-- Compiled mode needs two unmerged patches (Captum #1952, torch_tpu #6106). Until they land, use DeferAndFuse, which needs nothing.
+- Compiled mode needs two unmerged patches (Captum [#1952](https://github.com/meta-pytorch/captum/pull/1952), torch_tpu [#6106](https://github.com/google-pytorch/torch_tpu/pull/6106)). Until they land, use DeferAndFuse, which needs nothing.
 - The example's CPU reference timings in the shipped run are not usable: a bazel build was loading the host CPU at the time. The TPU numbers were unaffected.
 - The IG convergence problem on LLMs is real and not TPU-specific. Do not publish an attribution without its convergence delta.
-- Five branches (`missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`) are pushed to the fork but have no upstream PR yet. The repository allows users without write access 3 open PRs, and the first three fill that quota. Each branch is claimed by an issue (#6111 to #6114, and a comment on #4413) so review can start before the PR exists.
+- Five branches (`missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`) are pushed to the fork but have no upstream PR yet. The repository allows users without write access 3 open PRs, and the first three fill that quota. Each branch is claimed by an issue ([#6111](https://github.com/google-pytorch/torch_tpu/issues/6111) to [#6114](https://github.com/google-pytorch/torch_tpu/issues/6114), and a comment on [#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)) so review can start before the PR exists.
 
 ---
 
@@ -255,20 +255,20 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/capt
 
 **Open upstream**
 
-- google-pytorch/torch_tpu#6102: bounded scalar buffer cache (fixes #6036)
-- google-pytorch/torch_tpu#6103: issue, `aten::max_unpool2d` missing
-- google-pytorch/torch_tpu#6105: `max_unpool2d` / `max_unpool3d` lowerings
-- google-pytorch/torch_tpu#6106: compile TPU partitions against the layout CPU arguments are copied with
-- meta-pytorch/captum#1951: device-generic accelerator comparison tests
-- meta-pytorch/captum#1952: Python ints for LayerIntegratedGradients output offsets
+- [google-pytorch/torch_tpu#6102](https://github.com/google-pytorch/torch_tpu/pull/6102): bounded scalar buffer cache (fixes [#6036](https://github.com/google-pytorch/torch_tpu/issues/6036))
+- [google-pytorch/torch_tpu#6103](https://github.com/google-pytorch/torch_tpu/issues/6103): issue, `aten::max_unpool2d` missing
+- [google-pytorch/torch_tpu#6105](https://github.com/google-pytorch/torch_tpu/pull/6105): `max_unpool2d` / `max_unpool3d` lowerings
+- [google-pytorch/torch_tpu#6106](https://github.com/google-pytorch/torch_tpu/pull/6106): compile TPU partitions against the layout CPU arguments are copied with
+- [meta-pytorch/captum#1951](https://github.com/meta-pytorch/captum/pull/1951): device-generic accelerator comparison tests
+- [meta-pytorch/captum#1952](https://github.com/meta-pytorch/captum/pull/1952): Python ints for LayerIntegratedGradients output offsets
 
-**Pushed, PR pending** (fork `joinalahmed/torch_tpu`; the repository caps users without write access at 3 open PRs, so each branch is claimed by an issue until a slot frees)
+**Pushed, PR pending** (fork [`joinalahmed/torch_tpu`](https://github.com/joinalahmed/torch_tpu); the repository caps users without write access at 3 open PRs, so each branch is claimed by an issue until a slot frees)
 
-- `missing-ops-batch`: google-pytorch/torch_tpu#6111
-- `explainability-example`: google-pytorch/torch_tpu#6114
-- `dynamism-denylist-triage`: google-pytorch/torch_tpu#6112
-- `docs-memory-apis`: comment on google-pytorch/torch_tpu#4413
-- `loader-import-error-context`: google-pytorch/torch_tpu#6113
+- [`missing-ops-batch`](https://github.com/joinalahmed/torch_tpu/tree/missing-ops-batch): [google-pytorch/torch_tpu#6111](https://github.com/google-pytorch/torch_tpu/issues/6111)
+- [`explainability-example`](https://github.com/joinalahmed/torch_tpu/tree/explainability-example): [google-pytorch/torch_tpu#6114](https://github.com/google-pytorch/torch_tpu/issues/6114)
+- [`dynamism-denylist-triage`](https://github.com/joinalahmed/torch_tpu/tree/dynamism-denylist-triage): [google-pytorch/torch_tpu#6112](https://github.com/google-pytorch/torch_tpu/issues/6112)
+- [`docs-memory-apis`](https://github.com/joinalahmed/torch_tpu/tree/docs-memory-apis): comment on [google-pytorch/torch_tpu#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)
+- [`loader-import-error-context`](https://github.com/joinalahmed/torch_tpu/tree/loader-import-error-context): [google-pytorch/torch_tpu#6113](https://github.com/google-pytorch/torch_tpu/issues/6113)
 
 **In this repository** ([joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu))
 
