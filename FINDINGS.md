@@ -183,6 +183,24 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
   collaborators/org members as assignees (`/repos/.../assignees/joinalahmed` -> 404) and the repo has no `/assign` bot; each
   comment asks a maintainer to assign.
 
+## 13. Multi-chip validation on a v6e-4 (us-east5-b, 2026-11-01)
+Capacity: on-demand and spot v5litepod-4/8 and v6e-4/8 were unavailable in us-east5-b and us-central1-a all morning
+("Insufficient capacity"); a v5litepod-8 is also over the 4-chip per-zone serving quota. A queued v6e-4 landed after ~3 h.
+Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests.sh`, `scripts/captum_multichip_ig.py`.
+- Process model: libtpu is exclusive per process; a second process touching the TPU fails with "The TPU is already in use by
+  process with pid N". Multi-chip means one torchrun worker per chip (`eval $(python -m torch.tpu.distributed | sed 's/^/export /')`,
+  `torchrun --nproc_per_node=$WORLD_SIZE`); each worker sees `device_count() == 1`. `TPU_VISIBLE_CHIPS`-style variables do nothing.
+- Attribution matrix on chip 0 (`results/v6e-4/matrix_chip0.txt`): 27 OK, 11 RUNS, 0 DIFF/FAIL, identical to the v6e-1.
+- IG sharded across 4 chips with `tpu_dist` all_reduce (`results/v6e-4/multichip_ig.md`): 64 steps 0.355 s vs 0.219 s on one chip
+  (0.62x, the problem is too small to split); 256 steps 0.327 s vs 0.547 s with `internal_batch_size=64` (1.67x) and OOM for a
+  single 256 batch on one chip; agreement with Captum 5.6e-8 at equal batch size, 1.2e-4 otherwise.
+- From-source wheel on the 4-chip host: `torch_tpu-0.2.1-cp314` (hermetic default Python is 3.14), needs torch 2.11.0+cpu,
+  `libtpu`, `pyzmq`, `expecttest`/`hypothesis` for the in-repo tests, and `_internal/utils/test_utils.py` copied from `src/` (the
+  wheel omits test helpers). Each branch rebuild from the main cache takes ~9 min on 180 vCPUs.
+- Branch results (variant `_tpu-v6e`, `--local_test_jobs=1`): fix-scalar-buffer-cache-bound 3 passed, leak numbers identical
+  to v6e-1 (+903 / +280); max-unpool2d `ops_test_tpu-v6e` PASSED; missing-ops-batch `ops_test_tpu-v6e` PASSED (7 ops).
+  Remaining branches: see the continuation below.
+
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
 - Inseq device allow-list PR; torch_tpu examples/docs entry; precision-guide numbers (#5727); #4409 triage comment.
