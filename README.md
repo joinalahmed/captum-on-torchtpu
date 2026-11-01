@@ -44,6 +44,8 @@ Focus shifted to contributing to TorchTPU itself (sprint priority topic: executi
 - Triage comment on google-pytorch/torch_tpu#4408 (compiled SDPA backward NaN does not reproduce on 0.2.0).
 - The docs, loader, ops, example and dynamism branches await PR creation: the repository allows users without write
   access at most 3 open PRs, and #6102, #6105, #6106 fill that quota.
+  Each is claimed by an issue in the meantime: google-pytorch/torch_tpu#6111 (ops), #6112 (dynamism), #6113 (loader),
+  #6114 (example), and a comment on #4413 (memory docs).
 
 ## Layout
 

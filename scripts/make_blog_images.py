@@ -267,13 +267,13 @@ def contributions():
       ("torch_tpu #6106", "compile against the layout CPU args are copied with", "open PR"),
       ("captum #1951", "device-generic accelerator comparison tests", "open PR"),
       ("captum #1952", "Python ints for LIG output offsets", "open PR"),
-      ("missing-ops-batch", "8 ops: smooth_l1/huber loss, logaddexp(2), nansum, std_mean, trace, addbmm", "branch"),
-      ("explainability-example", "example script + 7-section docs case study", "branch"),
-      ("dynamism-denylist-triage", "11 stale deny-list entries removed, clamp.Tensor diagnosed", "branch"),
-      ("docs-memory-apis", "torch.accelerator memory APIs in the API reference", "branch"),
-      ("loader-import-error-context", "extension loader names glue + installed PyTorch", "branch"),
+      ("missing-ops-batch  (#6111)", "8 ops: smooth_l1/huber loss, logaddexp(2), nansum, std_mean, trace, addbmm", "branch, issue filed"),
+      ("explainability-example  (#6114)", "example script + 7-section docs case study", "branch, issue filed"),
+      ("dynamism-denylist-triage  (#6112)", "11 stale deny-list entries removed, clamp.Tensor diagnosed", "branch, issue filed"),
+      ("docs-memory-apis  (#4413)", "torch.accelerator memory APIs in the API reference", "branch, issue filed"),
+      ("loader-import-error-context  (#6113)", "extension loader names glue + installed PyTorch", "branch, issue filed"),
   ]
-  colors = {"open PR": BLUE, "open issue": ORANGE, "branch": AQUA}
+  colors = {"open PR": BLUE, "open issue": ORANGE, "branch, issue filed": AQUA}
   fig, ax = plt.subplots(figsize=(12, 5.6))
   ax.set_axis_off()
   ax.set_xlim(0, 1)
@@ -283,9 +283,9 @@ def contributions():
     y = len(items) - i
     ax.add_patch(plt.Rectangle((0, y - 0.32), 0.012, 0.64, color=colors[kind]))
     ax.text(0.025, y, ref, fontsize=10.5, weight="bold", va="center", family="monospace")
-    ax.text(0.30, y, desc, fontsize=10.5, va="center", color=INK2)
+    ax.text(0.36, y, desc, fontsize=10.5, va="center", color=INK2)
     ax.text(0.99, y, kind, fontsize=9.5, va="center", ha="right", color=colors[kind])
-  finish(fig, "08_contributions_map", "Branches are pushed to joinalahmed/torch_tpu; upstream PR creation pending.")
+  finish(fig, "08_contributions_map", "Branches are pushed to joinalahmed/torch_tpu; PRs wait on the repository's 3-open-PR limit for users without write access.")
 
 
 if __name__ == "__main__":

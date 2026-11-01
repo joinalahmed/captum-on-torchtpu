@@ -176,6 +176,9 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
   write to the repo but not open PRs there; fork PR creation works. Root cause (web compare page, 2026-11-01): "Users without write access can have up to 3 pull requests open at a time" on this
   repository; #6102, #6105 and #6106 fill the quota. The remaining five wait until one of those is merged or closed.
 - google-cla[bot] on #6102: CLA not yet signed; the check fails until it is.
+- Issues filed 2026-11-01 to claim the blocked branches: #6111 missing-ops-batch, #6112 dynamism-denylist-triage,
+  #6113 loader-import-error-context, #6114 explainability-example; docs-memory-apis is a comment on #4413.
+- PR #6106 retitled "Fix compiled TPU partitions reading CPU view arguments past their buffer".
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
