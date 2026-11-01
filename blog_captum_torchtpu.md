@@ -11,7 +11,7 @@
 - **Captum runs unmodified on TorchTPU.** Every public `captum.attr` method, including the `LLMAttribution` wrappers, works on `torch.device("tpu")`. 27 deterministic methods match CPU to 1e-7 relative error; 11 stochastic ones run and differ only by RNG.
 - **One setting matters:** `torch.set_float32_matmul_precision("highest")`. Without it, attributions are off from CPU by about 1e-3 (1e-2 for LayerGradCam). With it, they agree to 1e-7 on small models and 1e-5 on Qwen3-0.6B.
 - **Attribution is a sharp stress test for execution modes.** On Qwen3-0.6B, Layer Integrated Gradients with 64 steps takes 0.80 s in strict eager, 0.36 s with DeferAndFuse (one environment variable), and 0.16 s under `torch.compile(backend="tpu")`. CPU takes 4 to 17 s depending on steps.
-- **Explainability found real TorchTPU bugs and gaps.** A scalar-buffer leak, a missing `max_unpool2d` lowering, a compiled-mode bug reading CPU view arguments past their buffer, a Captum-side device bug, eight unregistered ops, and 11 stale entries on the bounded-dynamism deny list. All of it is fixed on branches; five PRs are open upstream and five more are pushed and waiting on a GitHub permission hiccup.
+- **Explainability found real TorchTPU bugs and gaps.** A scalar-buffer leak, a missing `max_unpool2d` lowering, a compiled-mode bug reading CPU view arguments past their buffer, a Captum-side device bug, eight unregistered ops, and 11 stale entries on the bounded-dynamism deny list. All of it is fixed on branches: five PRs are open upstream, and five more branches are pushed and claimed by issues while the repository's 3-open-PR limit for outside contributors frees up.
 
 ---
 
@@ -222,7 +222,7 @@ Eleven pass in both modes: `eq`, `maximum`, `ne`, `neg`, `pow`, `remainder`, `ro
 ### 6.7 Smaller things
 
 - **Loader error message** (branch `loader-import-error-context`): a from-source wheel only imports against the torch version pinned in the repo lockfile. The failure was a bare `undefined symbol c10::report_overflow`. The versioned extension loader now names the glue it picked and the PyTorch it found. Test added.
-- **Memory API docs** (branch `docs-memory-apis`, closes [#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)): the `torch.accelerator` memory APIs documented in the API reference with numbers measured on v6e.
+- **Memory API docs** (branch `docs-memory-apis`, addresses [#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)): the `torch.accelerator` memory APIs documented in the API reference with numbers measured on v6e.
 - **Triage comment on [#4408](https://github.com/google-pytorch/torch_tpu/issues/4408)**: the reported NaN in compiled SDPA backward does not reproduce on 0.2.0 with torch 2.15 (Qwen3, compiled versus CPU relative error 1.85e-5). Posted.
 - **[#4409](https://github.com/google-pytorch/torch_tpu/issues/4409)** (compile plus backward on a view input) did not reproduce in our smoke test either; noted, not yet verified numerically.
 
@@ -255,7 +255,7 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, [meta-pytorch/cap
 - [google-pytorch/torch_tpu#6102](https://github.com/google-pytorch/torch_tpu/pull/6102): bounded scalar buffer cache (fixes [#6036](https://github.com/google-pytorch/torch_tpu/issues/6036))
 - [google-pytorch/torch_tpu#6103](https://github.com/google-pytorch/torch_tpu/issues/6103): issue, `aten::max_unpool2d` missing
 - [google-pytorch/torch_tpu#6105](https://github.com/google-pytorch/torch_tpu/pull/6105): `max_unpool2d` / `max_unpool3d` lowerings
-- [google-pytorch/torch_tpu#6106](https://github.com/google-pytorch/torch_tpu/pull/6106): compile TPU partitions against the layout CPU arguments are copied with
+- [google-pytorch/torch_tpu#6106](https://github.com/google-pytorch/torch_tpu/pull/6106): fix compiled TPU partitions reading CPU view arguments past their buffer
 - [meta-pytorch/captum#1951](https://github.com/meta-pytorch/captum/pull/1951): device-generic accelerator comparison tests
 - [meta-pytorch/captum#1952](https://github.com/meta-pytorch/captum/pull/1952): Python ints for LayerIntegratedGradients output offsets
 
