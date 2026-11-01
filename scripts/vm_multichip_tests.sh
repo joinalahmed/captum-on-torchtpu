@@ -33,6 +33,9 @@ build_and_install() {
   [ $rc -eq 0 ] || { log "$1: BUILD FAILED"; grep -nE "^ERROR|error:" ~/build_$1.log | head -10 >> ~/multichip_summary.log; return 1; }
   WHL=$(ls -t bazel-bin/ci/wheel/torch_tpu-*.whl | head -1)
   uv pip install -q --python ~/env_fix/bin/python --reinstall --no-deps "$WHL" 2>&1 | tail -1
+  # The wheel omits the test-only helpers the in-repo tests import; copy them from the source tree.
+  SP=$(~/env_fix/bin/python -c "import torch_tpu, os; print(os.path.dirname(torch_tpu.__file__))" 2>/dev/null | tail -1)
+  cp src/torch_tpu/_internal/utils/test_utils.py src/torch_tpu/_internal/utils/test_fixtures.py "$SP/_internal/utils/" 2>/dev/null || true
 }
 pyt() { PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider "$@" 2>&1 | filt | tail -4; }
 bzt() { bazel test "$@" --config=no_rbe --local_test_jobs=1 --cache_test_results=no --test_output=errors 2>&1 | grep -E "^//|PASSED|FAILED|Executed|ERROR" | tail -6; }
@@ -57,7 +60,8 @@ run_branch() {
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_max_unpool" ;;
       cpu-view-args-split-compile)
         pyt tests/compile/split_compile_test.py -k "cpu_view_argument"
-        bzt //tests/compile:split_compile_test_tpu-$V --test_filter="*test_cpu_view_argument_to_tpu_partition*" ;;
+        # split_compile_test is tagged requires-tpu-v5lite only, so that is its only generated variant.
+        bzt //tests/compile:split_compile_test_tpu-v5lite --test_filter="*test_cpu_view_argument_to_tpu_partition*" ;;
       missing-ops-batch)
         pyt tests/ops_unit_test.py -k "piecewise or smooth_l1 or huber or logaddexp or nansum or std_mean or trace or addbmm"
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_logaddexp TestOps.test_nansum TestOps.test_std_mean TestOps.test_trace TestOps.test_addbmm TestOps.test_smooth_l1_loss TestOps.test_huber_loss" ;;
