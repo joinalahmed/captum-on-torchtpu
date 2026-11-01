@@ -14,12 +14,16 @@ filt() { grep -vE '^(I0000|W0000|E0000|num_|peak_|Loading|WARNING|Successfully|R
 log() { echo "##### $* $(date -u +%H:%M:%S)" | tee -a ~/multichip_summary.log; }
 log "device: $GEN x$CHIPS, test variant: tpu-$V"
 
-# env_fix: python matching the lockfile torch pin so a from-source wheel imports.
+# env_fix: the wheel is built for the hermetic default Python (3.14, MODULE.bazel) and only imports
+# with the torch pinned in requirements/requirements_3_14.txt; uv supplies that interpreter.
+export PATH=$HOME/.local/bin:$PATH
 if [ ! -d ~/env_fix ]; then
-  TORCH_PIN=$(grep -oE "torch==[0-9.]+" requirements*.txt uv.lock 2>/dev/null | head -1 | cut -d= -f3)
-  python3.12 -m venv ~/env_fix && ~/env_fix/bin/pip install -q --upgrade pip
-  ~/env_fix/bin/pip install -q "torch==${TORCH_PIN:-2.11.0}" --index-url https://download.pytorch.org/whl/cpu
-  ~/env_fix/bin/pip install -q "transformers>=5" captum pytest scikit-learn absl-py parameterized numpy
+  [ -x ~/.local/bin/uv ] || curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
+  TORCH_PIN=$(grep -oE "^torch==[0-9.]+\+cpu" requirements/requirements_3_14.txt | head -1 | cut -d= -f3)
+  uv venv -q --python 3.14 ~/env_fix
+  uv pip install -q --python ~/env_fix/bin/python "torch==${TORCH_PIN:-2.11.0+cpu}" --index-url https://download.pytorch.org/whl/cpu
+  # The wheel is installed --no-deps, so libtpu (the PjRT plugin) must be installed explicitly.
+  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.50" "transformers>=5" accelerate captum pytest scikit-learn absl-py parameterized numpy portpicker
 fi
 PY=~/env_fix/bin/python
 
