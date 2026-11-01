@@ -56,8 +56,8 @@ run_branch() {
         pyt tests/ops_unit_test.py -k "unpool"
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_max_unpool" ;;
       cpu-view-args-split-compile)
-        pyt tests/ -k "split_compil or cpu_view or view_arg" --ignore=tests/distributed
-        bzt //tests:split_compiler_test_tpu-$V 2>/dev/null || true ;;
+        pyt tests/compile/split_compile_test.py -k "cpu_view_argument"
+        bzt //tests/compile:split_compile_test_tpu-$V --test_filter="*test_cpu_view_argument_to_tpu_partition*" ;;
       missing-ops-batch)
         pyt tests/ops_unit_test.py -k "piecewise or smooth_l1 or huber or logaddexp or nansum or std_mean or trace or addbmm"
         bzt //tests:ops_test_tpu-$V --test_filter="TestOps.test_logaddexp TestOps.test_nansum TestOps.test_std_mean TestOps.test_trace TestOps.test_addbmm TestOps.test_smooth_l1_loss TestOps.test_huber_loss" ;;
