@@ -224,7 +224,8 @@ Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests
   `//tests/compile:split_compile_test` for the CPU-view branch (PASSED), and the per-chip torchrun leak check, where all four ranks
   report the same counts as the single chip (+2 / +903 / +0 / +280). The table above reflects the final state. The same libtpu
   0.0.51 was used in both envs this time and the host stayed healthy, which is weak evidence for the 0.0.50-downgrade theory above.
-  Still uncovered: a v5e-8 (quota) and `tests/distributed/`.
+  Still uncovered: a v5e-8 (quota) and `tests/distributed/`. The second node and both build disks were deleted at ~18:15 UTC on
+  2026-11-01; nothing from this work is billing.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
