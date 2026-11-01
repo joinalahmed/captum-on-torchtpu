@@ -42,8 +42,8 @@ Focus shifted to contributing to TorchTPU itself (sprint priority topic: executi
 - Branch `dynamism-denylist-triage`: 11 stale entries removed from the bounded-dynamism deny list (verified in eager and
   compiled mode on v6e), `clamp` moved to a diagnosed reason.
 - Triage comment on google-pytorch/torch_tpu#4408 (compiled SDPA backward NaN does not reproduce on 0.2.0).
-- The docs, loader, ops and example branches await PR creation: GitHub currently refuses `createPullRequest`
-  for this account on the repo (three PRs were created earlier the same day).
+- The docs, loader, ops, example and dynamism branches await PR creation: the repository allows users without write
+  access at most 3 open PRs, and #6102, #6105, #6106 fill that quota.
 
 ## Layout
 

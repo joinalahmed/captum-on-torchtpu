@@ -173,7 +173,8 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
 - Branches pushed, PR creation blocked by GitHub: `docs-memory-apis`, `loader-import-error-context`, `missing-ops-batch`,
   `explainability-example`, `dynamism-denylist-triage`. Retried 2026-11-01 09:35 (+03): GraphQL `createPullRequest` still refused,
   REST `POST /pulls` returns 404, while a no-op PATCH of our own PR #6106 succeeds and rate limits are untouched. So the account can
-  write to the repo but not open PRs there; fork PR creation works. Next step: open from the web compare pages while signed in.
+  write to the repo but not open PRs there; fork PR creation works. Root cause (web compare page, 2026-11-01): "Users without write access can have up to 3 pull requests open at a time" on this
+  repository; #6102, #6105 and #6106 fill the quota. The remaining five wait until one of those is merged or closed.
 - google-cla[bot] on #6102: CLA not yet signed; the check fails until it is.
 
 ## TODO
