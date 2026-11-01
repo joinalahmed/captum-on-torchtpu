@@ -72,7 +72,7 @@ def cover():
     x = 0.06 + i * 0.235
     fig.text(x, 0.40, big, fontsize=40, weight="bold", color=[BLUE, AQUA, ORANGE, BLUE][i])
     fig.text(x, 0.26, small, fontsize=11, color=INK2, va="top", linespacing=1.4)
-  fig.text(0.06, 0.08, "#TorchTPUSprint  ·  Cloud TPU v6e-1  ·  torch 2.15 · torch_tpu 0.2.0 · Captum 0.9.0",
+  fig.text(0.06, 0.08, "Cloud TPU v6e-1  ·  torch 2.15  ·  torch_tpu 0.2.0  ·  Captum 0.9.0",
            fontsize=10.5, color=MUTED)
   finish(fig, "00_cover")
 

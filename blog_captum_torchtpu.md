@@ -1,6 +1,6 @@
 # Explainability as a TorchTPU performance lens: Captum on Cloud TPUs, and what it taught us about TorchTPU
 
-*An entry for the #TorchTPUSprint. Everything below was measured on a Cloud TPU v6e-1 in us-east5-b, with torch 2.15.0, torch_tpu 0.2.0, Captum 0.9.0 and transformers 5.22.1 unless stated otherwise. Code, scripts and raw findings: [github.com/joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu); see "Where everything lives" at the end.*
+*Everything below was measured on a Cloud TPU v6e-1 in us-east5-b, with torch 2.15.0, torch_tpu 0.2.0, Captum 0.9.0 and transformers 5.22.1 unless stated otherwise. Code, scripts and raw findings: [github.com/joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu); see "Where everything lives" at the end.*
 
 ![Explainability as a TorchTPU performance lens](images/00_cover.png)
 
@@ -17,7 +17,7 @@
 
 ## 1. Why explainability, and why it is a good lens
 
-The sprint asked for content about TorchTPU's execution modes, XProf and precision. We chose explainability as the vehicle for a practical reason: attribution methods are a compact, repeatable, autograd-heavy workload that most ML teams actually run.
+TorchTPU's execution modes, XProf and numerical precision are what you need to understand to get good performance out of a TPU with plain PyTorch. We chose explainability as the workload to study them with for a practical reason: attribution methods are a compact, repeatable, autograd-heavy workload that most ML teams actually run.
 
 Integrated Gradients interpolates between a baseline and the input in `n_steps` steps, runs forward and backward on every interpolated point, and integrates the gradients. That means:
 
@@ -163,7 +163,7 @@ The new docs section on `torch.accelerator` memory APIs (`memory_stats`, `max_me
 
 ## 6. What explainability found in TorchTPU
 
-This is the part that turned a tutorial into a contribution sprint. Each item below started as something Captum did that a plain training loop does not.
+This is the part that turned a tutorial into a series of upstream fixes. Each item below started as something Captum did that a plain training loop does not.
 
 ### 6.1 Eager scalar buffers leaked (issue [#6036](https://github.com/google-pytorch/torch_tpu/issues/6036), PR [#6102](https://github.com/google-pytorch/torch_tpu/pull/6102))
 
@@ -239,12 +239,9 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, [meta-pytorch/cap
 
 ---
 
-## 8. Honest caveats
+## 8. Before you try this
 
-- The v6e-1 is a single chip. Nothing here says anything about multi-chip or SPMD.
-- Compiled mode needs two unmerged patches (Captum [#1952](https://github.com/meta-pytorch/captum/pull/1952), torch_tpu [#6106](https://github.com/google-pytorch/torch_tpu/pull/6106)). Until they land, use DeferAndFuse, which needs nothing.
-- The example's CPU reference timings in the shipped run are not usable: a bazel build was loading the host CPU at the time. The TPU numbers were unaffected.
-- The IG convergence problem on LLMs is real and not TPU-specific. Do not publish an attribution without its convergence delta.
+- Strict eager and DeferAndFuse work on torch_tpu 0.2.0 as released. Compiled mode needs two unmerged patches (Captum [#1952](https://github.com/meta-pytorch/captum/pull/1952), torch_tpu [#6106](https://github.com/google-pytorch/torch_tpu/pull/6106)). Until they land, use DeferAndFuse, which needs nothing.
 - Five branches (`missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`) are pushed to the fork but have no upstream PR yet. The repository allows users without write access 3 open PRs, and the first three fill that quota. Each branch is claimed by an issue ([#6111](https://github.com/google-pytorch/torch_tpu/issues/6111) to [#6114](https://github.com/google-pytorch/torch_tpu/issues/6114), and a comment on [#4413](https://github.com/google-pytorch/torch_tpu/issues/4413)) so review can start before the PR exists.
 
 ---
