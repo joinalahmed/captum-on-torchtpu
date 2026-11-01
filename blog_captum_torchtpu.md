@@ -12,6 +12,7 @@
 - Attribution results depend on the matmul precision setting. With the default, TPU attributions differ from CPU by roughly 1e-3 (1e-2 for LayerGradCam). With `torch.set_float32_matmul_precision("highest")` they agree to about 1e-7 on small models and 1e-5 on Qwen3-0.6B. The setting has no measurable cost for this workload.
 - Attribution is a useful workload for comparing execution modes. On Qwen3-0.6B, Layer Integrated Gradients with 64 steps takes 0.80 s in strict eager mode, 0.36 s with DeferAndFuse, and 0.16 s under `torch.compile(backend="tpu")`. The same computation on CPU takes between 4 and 17 s depending on the number of steps.
 - Working through this surfaced several TorchTPU issues: a leak of device buffers for Python scalars, a missing `max_unpool2d` lowering, a compiled-mode bug that read CPU view arguments past their buffer, a Captum bug that placed a CPU tensor in the compiled graph, eight unregistered ops, and 11 stale entries on the bounded-dynamism deny list. Five pull requests are open upstream. Five more branches are pushed and tracked by issues while the repository's limit of three open PRs per outside contributor frees up.
+- On a four-chip v6e-4 the same results hold, and every fix passes the bazel tests upstream CI runs. Multi-chip attribution is one worker per chip under torchrun; sharding Integrated Gradients across four chips matches the single-chip result to 5.6e-8 and pays off only once the step count no longer fits one chip (1.67x at 256 steps, slower at 64).
 
 ---
 
