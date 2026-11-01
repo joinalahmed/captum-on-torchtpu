@@ -245,7 +245,7 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/capt
 - Compiled mode needs two unmerged patches (Captum #1952, torch_tpu #6106). Until they land, use DeferAndFuse, which needs nothing.
 - The example's CPU reference timings in the shipped run are not usable: a bazel build was loading the host CPU at the time. The TPU numbers were unaffected.
 - The IG convergence problem on LLMs is real and not TPU-specific. Do not publish an attribution without its convergence delta.
-- Five branches (`missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`) are pushed to the fork but have no upstream PR yet: GitHub refuses `createPullRequest` on the upstream repo for this account after three PRs opened the same day, while PR creation on the fork works. A retry is scheduled; the fallback is the compare page in the web UI.
+- Five branches (`missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`) are pushed to the fork but have no upstream PR yet. The repository allows users without write access 3 open PRs, and the first three fill that quota. Each branch is claimed by an issue (#6111 to #6114, and a comment on #4413) so review can start before the PR exists.
 
 ---
 
@@ -262,9 +262,13 @@ And a test suite for Captum (`tests/attr/test_accelerator.py`, meta-pytorch/capt
 - meta-pytorch/captum#1951: device-generic accelerator comparison tests
 - meta-pytorch/captum#1952: Python ints for LayerIntegratedGradients output offsets
 
-**Pushed, PR pending** (fork `joinalahmed/torch_tpu`)
+**Pushed, PR pending** (fork `joinalahmed/torch_tpu`; the repository caps users without write access at 3 open PRs, so each branch is claimed by an issue until a slot frees)
 
-- `missing-ops-batch`, `explainability-example`, `dynamism-denylist-triage`, `docs-memory-apis`, `loader-import-error-context`
+- `missing-ops-batch`: google-pytorch/torch_tpu#6111
+- `explainability-example`: google-pytorch/torch_tpu#6114
+- `dynamism-denylist-triage`: google-pytorch/torch_tpu#6112
+- `docs-memory-apis`: comment on google-pytorch/torch_tpu#4413
+- `loader-import-error-context`: google-pytorch/torch_tpu#6113
 
 **In this repository** ([joinalahmed/captum-on-torchtpu](https://github.com/joinalahmed/captum-on-torchtpu))
 
