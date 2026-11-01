@@ -71,7 +71,8 @@ run_branch() {
         bzt //tests:ops_test_dynamic_tpu-$V --test_filter="$F"
         bzt //tests:ops_test_dynamic_compiled_tpu-$V --test_filter="$F" ;;
       loader-import-error-context)
-        pyt tests/_versioned_so_loader_test.py ;;
+        # The loader test inspects the package layout, so run it the way CI does (bazel, repo tree), not against the wheel.
+        bzt //tests:_versioned_so_loader_test ;;
       docs-memory-apis)
         $PY - <<'EOF' 2>&1 | filt
 import torch, torch_tpu
