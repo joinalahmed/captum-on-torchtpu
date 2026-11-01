@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-11-01T09:45:30.262182</dc:date>
+    <dc:date>2026-11-01T09:57:17.200982</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,7 +35,7 @@ L 30.79584 61.637042
 L 30.79584 43.669496 
 L 20.7 43.669496 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 20.7 89.711334 
@@ -43,7 +43,7 @@ L 30.79584 89.711334
 L 30.79584 71.743787 
 L 20.7 71.743787 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #eb6834; stroke: #eb6834; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #eb6834; stroke: #eb6834; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 20.7 117.785626 
@@ -51,7 +51,7 @@ L 30.79584 117.785626
 L 30.79584 99.818079 
 L 20.7 99.818079 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 20.7 145.859918 
@@ -59,7 +59,7 @@ L 30.79584 145.859918
 L 30.79584 127.892371 
 L 20.7 127.892371 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 20.7 173.93421 
@@ -67,7 +67,7 @@ L 30.79584 173.93421
 L 30.79584 155.966663 
 L 20.7 155.966663 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 20.7 202.008502 
@@ -75,7 +75,7 @@ L 30.79584 202.008502
 L 30.79584 184.040955 
 L 20.7 184.040955 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_8">
     <path d="M 20.7 230.082793 
@@ -83,7 +83,7 @@ L 30.79584 230.082793
 L 30.79584 212.115247 
 L 20.7 212.115247 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
    </g>
    <g id="patch_9">
     <path d="M 20.7 258.157085 
@@ -91,7 +91,7 @@ L 30.79584 258.157085
 L 30.79584 240.189539 
 L 20.7 240.189539 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
    </g>
    <g id="patch_10">
     <path d="M 20.7 286.231377 
@@ -99,7 +99,7 @@ L 30.79584 286.231377
 L 30.79584 268.26383 
 L 20.7 268.26383 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
    </g>
    <g id="patch_11">
     <path d="M 20.7 314.305669 
@@ -107,7 +107,7 @@ L 30.79584 314.305669
 L 30.79584 296.338122 
 L 20.7 296.338122 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
    </g>
    <g id="patch_12">
     <path d="M 20.7 342.379961 
@@ -115,7 +115,7 @@ L 30.79584 342.379961
 L 30.79584 324.412414 
 L 20.7 324.412414 
 z
-" clip-path="url(#p8b93819b1d)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
+" clip-path="url(#p5deb6fb1ac)" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <!-- What explainability found in TorchTPU, and where each fix lives -->
@@ -3496,7 +3496,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p8b93819b1d">
+  <clipPath id="p5deb6fb1ac">
    <rect x="20.7" y="18.964119" width="841.32" height="342.506361"/>
   </clipPath>
  </defs>
