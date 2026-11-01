@@ -20,8 +20,11 @@ https://github.com/joinalahmed/captum-on-torchtpu/tree/main/tpu_agent_project
 3. **`compute` as the single path to the target** is the right abstraction for
    a researcher: `run --code X --output A:B` is "run this file over there and
    bring these back", identical across VM and GKE, with job tracking and
-   SessionEnd reaping. <!-- TODO: confirm after the VM run; note anything about
-   control-socket reuse, timing, error messages. -->
+   SessionEnd reaping. Confirmed on the VM: `run --code captum_ig_tpu.py
+   --output results.json:... --output xprof.xplane.pb:...` took 51 s end to
+   end for a ~30 s workload, with the ssh control socket making the scp legs
+   cheap. The "declared output ... was not produced on the target" error is
+   clear when it happens.
 4. **Citation-only knowledge base.** For three memory-sizing questions the
    agent returned one URL per claim and said explicitly what no source states
    (free HBM after runtime allocations; PJRT "reserved" semantics). That is
@@ -104,13 +107,68 @@ user has no progress signal.
   make workspaces shareable.
 
 ## Observations from the TPU run
-<!-- TODO after the VM run: preflight/verify output, inspect while chips were
-held by another process (what it reported), run --output round trip, trace
-size, anything surprising in error messages; "TPU is already in use" handling. -->
+
+### P6. `setup verify` fails on the suite's own pins against a stock torch_tpu VM
+`requirements-tpu.txt` pins `torch>=2.13.0,<2.14` (the comment says shims
+exist for 2.11/2.12/2.13/2.15 but not 2.14, as of a 2026-09 dev build).
+Released torch_tpu 0.2.0 installs torch 2.15.0, so verify reports
+`torch 2.15.0 installed; needs >=2.13.0,<2.14` with the fix "reinstall
+torch_tpu", which would reinstall the same thing. It also fails on jax,
+diffusers, pandas, tpu-info, ml_dtypes and google-cloud-storage missing,
+although a plain `compute run` needs none of them and worked. The result is
+that a correct, released-torch_tpu VM can never reach VERIFIED.
+*Suggestion:* pin torch via torch_tpu's own requirement (or `!=2.14.*`), and
+split target requirements into "needed by compute" (nothing beyond the
+interpreter) and per-specialist sets checked only when that specialist runs.
+Output: `results/setup_verify.json`.
+
+### P7. `compute inspect` needs `tpu_info` in the target interpreter
+With `~/env` lacking `tpu_info`, inspect returned `status: unreachable,
+chips: 0` for a VM that preflight had just reported READY (v6e-4) and that
+ran the workload a minute later. "unreachable" is the wrong word for "probe
+dependency missing"; an agent reading it would conclude the VM is down.
+*Suggestion:* fall back to `/dev/accel*` or `gcloud describe` for the chip
+count, and report `probe_missing: tpu_info` instead of unreachable.
+Output: `results/inspect.json`.
+
+### P8. Output scp retries after a failed script
+When the script exits non-zero before writing its declared outputs, the gce
+driver still tries to fetch each output and retries the scp 10x per file
+(about 1.5 min each). The failed first attempt took 3.5 min for a 10-second
+crash. *Suggestion:* skip output collection when the script's exit status is
+non-zero, or retry only on transport errors, not on "No such file".
+Output: `results/run_attempt1_failed.log`.
+
+### Smaller
+- `accelerator` stays `unknown` on a VM: `TPU_ACCELERATOR_TYPE` is not set
+  there and `tpu_info` was absent. The hello-world script has the same gap.
+- Stdout and stderr of the remote script come back interleaved with libtpu's
+  INFO logging and the gcloud ssh banner; a `--quiet` or a "script output
+  only" mode would make the result table easier to find.
 
 ## Observations from tpu-diagnostics
-<!-- TODO after the profile run: did it find the XProf skill; what it
-reported vs what the trace held; cost/time. -->
+
+This was the best part of the suite. Headless, from a prompt naming a local
+`.xplane.pb`: the router delegated once, the specialist located the XProf skill
+of the installed `xprof` 2.24.2, copied the trace into the run's artifacts so
+cache files stayed out of the workspace, recorded its sha256, ran the tools
+(about 21 s of tool time) and wrote a 757-line report with every number
+labelled measured / derived (formula given) / inferred, and the raw JSON kept
+under the run's artifacts. It caught that `get_roofline_model`'s
+`bound_by: HBM` is an argmax over all-zero utilizations and said so rather
+than reporting a bandwidth limit. 11 turns, 14.3 min, $7.74.
+
+Small things:
+- The report is long for the question asked. A `summary` field in
+  `profiling-result.json` with the ten headline numbers, and the long form as
+  an artifact, would suit a caller better.
+- The agent "skipped the compute profile setup prompt because no job was
+  needed", which was the right call, but the SessionStart message still tells
+  every session to run `setup verify` first. For host-only work (reading a
+  trace, a KB question) that nudge is noise.
+- Both headless runs ended with the router's `ask` tool unused and no
+  clarification needed; the eval-style prompts in `docs/using.md` carry over
+  well to `claude -p`.
 
 ## What I would like to contribute
 - A knowledge-base source: Captum attributions on TPU match CPU only with

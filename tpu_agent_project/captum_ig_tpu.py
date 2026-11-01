@@ -89,7 +89,10 @@ def attribute(make_attr, model, inp, device, **kw):
 
 
 def compare_all(device, precision):
-    torch.set_float32_matmul_precision(precision)
+    # "default" = leave the runtime's own setting alone (TPU: reduced-precision
+    # fp32 matmuls); torch_tpu accepts only highest/high/medium as values.
+    if precision != "default":
+        torch.set_float32_matmul_precision(precision)
     mlp, x, cnn, img = models_and_inputs()
     rows = []
     for name, model, inp, make_attr, kw in cases(mlp, x, cnn, img):
@@ -157,11 +160,12 @@ def profile_ig(device, trace_dir, trace_file):
 def versions():
     out = {"torch": torch.__version__, "python": platform.python_version(),
            "host": platform.node()}
-    for mod in ("torch_tpu", "captum"):
+    from importlib.metadata import version as dist_version
+    for mod, dist in (("torch_tpu", "torch_tpu"), ("captum", "captum")):
         try:
-            out[mod] = __import__(mod).__version__
+            out[mod] = dist_version(dist)
         except Exception:  # noqa: BLE001
-            out[mod] = None
+            out[mod] = getattr(sys.modules.get(mod), "__version__", None)
     out["accelerator"] = os.environ.get("TPU_ACCELERATOR_TYPE") or "unknown"
     try:
         from tpu_info import device as tpu_device  # type: ignore
