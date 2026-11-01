@@ -197,9 +197,26 @@ Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests
 - From-source wheel on the 4-chip host: `torch_tpu-0.2.1-cp314` (hermetic default Python is 3.14), needs torch 2.11.0+cpu,
   `libtpu`, `pyzmq`, `expecttest`/`hypothesis` for the in-repo tests, and `_internal/utils/test_utils.py` copied from `src/` (the
   wheel omits test helpers). Each branch rebuild from the main cache takes ~9 min on 180 vCPUs.
-- Branch results (variant `_tpu-v6e`, `--local_test_jobs=1`): fix-scalar-buffer-cache-bound 3 passed, leak numbers identical
-  to v6e-1 (+903 / +280); max-unpool2d `ops_test_tpu-v6e` PASSED; missing-ops-batch `ops_test_tpu-v6e` PASSED (7 ops).
-  Remaining branches: see the continuation below.
+- Branch results (`results/v6e-4/branches/`, variant `_tpu-v6e`, `--local_test_jobs=1`, each branch rebuilt from source on the host):
+
+  | branch | bazel (as CI runs it) | pytest against the installed wheel |
+  |---|---|---|
+  | fix-scalar-buffer-cache-bound | - | `scalar_buffer_cache_test.py` 3 passed; leak counts identical to v6e-1 (+2 / +903 / +0 / +280) |
+  | max-unpool2d | `ops_test_tpu-v6e` (test_max_unpool*) PASSED | not run (test deps) |
+  | cpu-view-args-split-compile | target name wrong in the loop, rerun pending | `split_compile_test.py -k cpu_view_argument` 4 passed |
+  | missing-ops-batch | `ops_test_tpu-v6e` (7 ops) PASSED | not run (test deps) |
+  | dynamism-denylist-triage | `ops_test_dynamic_tpu-v6e` and `ops_test_dynamic_compiled_tpu-v6e` (11 ops) PASSED | - |
+  | loader-import-error-context | `_versioned_so_loader_test` PASSED | 16 failed: the test inspects the repo package layout, invalid against a wheel |
+  | docs-memory-apis | - | memory_allocated / max_memory_allocated / memory_reserved / get_memory_info / hbm_bytes_per_device all return sane values |
+  | explainability-example | - | strict, DeferAndFuse, compile: all run, max rel err vs CPU 2.0e-7 |
+
+  Two sessions ran the loop concurrently for ~3 minutes (racing the checkout, bazel lock and exclusive TPU); that pass was
+  discarded (`multichip_summary_collided.log`).
+- At ~11:45 the host-side TPU session manager started refusing every process: libtpu logs `tpunetd_client ... MaybeInitializeSliceBuilder
+  failed: GRPC_ERROR START_SESSION failed. Contact GCE with UUID ...`. A guest reboot and a `tpu-runtime.service` restart did not clear it,
+  `gcloud compute tpus tpu-vm stop` is not supported for queued-resource nodes, and the node still reports HEALTHY. The last thing that
+  touched the TPU before the failure was a 4-worker torchrun from an env whose `libtpu` had just been downgraded to 0.0.50 by the repo
+  requirements lock (the released env uses 0.0.51); whether that is cause or coincidence is unknown.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
