@@ -21,6 +21,8 @@ p.add_argument("--steps", type=int, default=64)
 p.add_argument("--model", default="Qwen/Qwen3-0.6B")
 p.add_argument("--compile", action="store_true")
 p.add_argument("--method", default="riemann_trapezoid")
+p.add_argument("--batch", type=int, default=0, help="grid points per forward on each rank (0 = all of this rank's)")
+p.add_argument("--ref-batch", type=int, default=0, help="internal_batch_size for the single-chip Captum reference")
 args = p.parse_args()
 
 torch.set_float32_matmul_precision("highest")
@@ -51,12 +53,17 @@ alphas = alphas_fn(args.steps); steps = step_sizes_fn(args.steps)
 mine = list(range(rank, args.steps, world))
 log(f"grid points {len(mine)} of {args.steps}")
 
+a_mine = torch.tensor([alphas[i] for i in mine], device=tpu).view(-1, 1, 1)
+w_mine = torch.tensor([steps[i] for i in mine], device=tpu).view(-1, 1, 1)
+B = args.batch or len(mine)   # grid points per forward pass on this rank (Captum: all n_steps at once)
+
 def sharded_ig():
     acc = torch.zeros_like(x_emb)
-    for i in mine:
-        e = (b_emb + alphas[i] * (x_emb - b_emb)).detach().requires_grad_(True)
+    for s in range(0, len(mine), B):
+        a, w = a_mine[s:s + B], w_mine[s:s + B]
+        e = (b_emb + a * (x_emb - b_emb)).detach().requires_grad_(True)      # [B, T, D], like Captum's batch
         (g,) = torch.autograd.grad(fwd_emb(e).sum(), e)
-        acc = acc + steps[i] * g
+        acc = acc + (w * g).sum(0, keepdim=True)
     dist.all_reduce(acc, op=dist.ReduceOp.SUM)
     return ((x_emb - b_emb) * acc).sum(-1).cpu()   # per-token attribution
 
@@ -69,8 +76,9 @@ log(f"sharded IG ({world} chips, {args.steps} steps) warm: {[f'{t:.3f}' for t in
 # --- single-chip reference on rank 0 -----------------------------------------------------------
 if rank == 0:
     lig = LayerIntegratedGradients(fwd_ids, emb)
-    ref_run = lambda: lig.attribute(ids, baselines=torch.full_like(ids, pad), n_steps=args.steps,
-                                    method=args.method, return_convergence_delta=True)
+    ref_run = lambda: lig.attribute(ids, baselines=torch.full_like(ids, pad), n_steps=args.steps, method=args.method,
+                                    internal_batch_size=args.ref_batch or None, return_convergence_delta=True)
+    log(f"captum reference: 1 chip, internal_batch_size={args.ref_batch or 'all'}")
     t0 = time.perf_counter(); ref, delta = ref_run(); log(f"captum warmup {time.perf_counter()-t0:.1f}s")
     tr = []
     for _ in range(3):
