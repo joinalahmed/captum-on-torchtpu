@@ -15,8 +15,8 @@ the model (`device_map="tpu"`), the attribution, and the tests. Built for the #T
 4. **A "Captum on TPUs" tutorial** (notebook + blog) with the one setting every TPU user needs:
    `torch.set_float32_matmul_precision("highest")` — see FINDINGS.md.
 
-See [FINDINGS.md](FINDINGS.md) for measured results, [blog_captum_torchtpu.md](blog_captum_torchtpu.md) for the
-sprint write-up, and [reports/](reports/) for the prior-art research.
+See [FINDINGS.md](FINDINGS.md) for measured results and [reports/](reports/) for the prior-art research. The
+write-up is published separately.
 
 ## Upstream work in torch_tpu
 
@@ -59,7 +59,7 @@ Focus shifted to contributing to TorchTPU itself (sprint priority topic: executi
 | `scripts/demo_captum_qwen_tpu.py` | end-to-end demo: `device_map="tpu"`, LayerIntegratedGradients, LLMAttribution, HTML heatmap |
 | `torchtpu_xai/` | small helpers (HTML heatmap renderer, a reference IG with convergence check). Not the product. |
 | `upstream/captum/` | shallow clone of Captum; PR work lives on branch `tpu-accelerator-tests` |
-| `hf_tpu_bench.py`, `build_notebook.py`, `hf_on_torchtpu.ipynb`, `blog_draft.md` | earlier "HF on TorchTPU" scaffold; superseded |
+| `hf_tpu_bench.py`, `build_notebook.py`, `hf_on_torchtpu.ipynb` | earlier "HF on TorchTPU" scaffold; superseded |
 
 ## Running on a TPU VM
 

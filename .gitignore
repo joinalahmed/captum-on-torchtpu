@@ -4,3 +4,8 @@ upstream/
 __pycache__/
 *.pyc
 .DS_Store
+blog_*.md
+linkedin_*
+images/linkedin_card.png
+scripts/make_linkedin_image.py
+sprint_entry_email.md

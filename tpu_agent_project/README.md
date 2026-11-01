@@ -56,7 +56,6 @@ Design choices worth knowing before using it:
 | `run_agent.sh` | headless Claude Code (`claude -p`) in this workspace with a tool allow-list |
 | `results/` | what the runs produced (trace files are git-ignored) |
 | `FEEDBACK.md` | detailed first-user feedback for the suite's authors |
-| `../blog_explainability_agent_assisted.md` | the sprint write-up built on this project |
 | `.claude/`, `CLAUDE.md` | written by the suite's installer; committed so the workspace is inspectable. `.tpu-agent-suite/` (compute profile, ownership ledger, current run id) is also written by it, and the installer adds it to `.git/info/exclude`, so it stays local |
 
 ## How to run
