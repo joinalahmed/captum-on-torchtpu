@@ -216,7 +216,10 @@ Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests
   failed: GRPC_ERROR START_SESSION failed. Contact GCE with UUID ...`. A guest reboot and a `tpu-runtime.service` restart did not clear it,
   `gcloud compute tpus tpu-vm stop` is not supported for queued-resource nodes, and the node still reports HEALTHY. The last thing that
   touched the TPU before the failure was a 4-worker torchrun from an env whose `libtpu` had just been downgraded to 0.0.50 by the repo
-  requirements lock (the released env uses 0.0.51); whether that is cause or coincidence is unknown.
+  requirements lock (the released env uses 0.0.51); whether that is cause or coincidence is unknown. Retried every ~3 min for 35 min
+  with no recovery; the node was deleted at 12:20 UTC on 2026-11-01. Build disks kept. Not completed on multi-chip: pytest halves of
+  max-unpool2d and missing-ops-batch (their bazel targets pass), `//tests/compile:split_compile_test` for the CPU-view branch (pytest
+  4 passed), and the per-chip torchrun leak check.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
