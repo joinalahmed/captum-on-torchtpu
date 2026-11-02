@@ -7,9 +7,15 @@ export PATH=$HOME/bin:$PATH
 log() { echo "##### $* $(date -u +%H:%M:%S)" | tee -a ~/setup.log; }
 
 log "mount build disk"
-DEV=$(lsblk -dpno NAME,TYPE | awk '$2=="disk"' | grep -v "$(findmnt -no SOURCE / | sed 's/p\?[0-9]*$//')" | head -1 | awk '{print $1}')
+# The data disk is the whole disk with no partitions; the boot disk has them.
+DEV=""
+for d in $(lsblk -dpno NAME,TYPE | awk '$2=="disk"{print $1}'); do
+  if [ "$(lsblk -no NAME "$d" | wc -l)" -eq 1 ]; then DEV="$d"; break; fi
+done
 sudo mkdir -p /mnt/disks/build
-if ! mountpoint -q /mnt/disks/build; then
+if [ -z "$DEV" ]; then
+  log "no data disk attached; using the boot disk for /mnt/disks/build"
+elif ! mountpoint -q /mnt/disks/build; then
   sudo blkid "$DEV" >/dev/null 2>&1 || sudo mkfs.ext4 -q -F "$DEV"
   sudo mount -o discard,defaults "$DEV" /mnt/disks/build
 fi
