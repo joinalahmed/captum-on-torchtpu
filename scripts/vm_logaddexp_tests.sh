@@ -14,7 +14,7 @@ if [ ! -d ~/env_fix ]; then
   TORCH_PIN=$(grep -oE "^torch==[0-9.]+\+cpu" requirements/requirements_3_14.txt | head -1 | cut -d= -f3)
   uv venv -q --python 3.14 ~/env_fix
   uv pip install -q --python ~/env_fix/bin/python "torch==${TORCH_PIN:-2.11.0+cpu}" --index-url https://download.pytorch.org/whl/cpu
-  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.51" pytest absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq attrs cattrs safetensors scikit-learn
+  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.51" pytest absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq attrs cattrs safetensors pyyaml scikit-learn
 fi
 PY=~/env_fix/bin/python
 
@@ -49,7 +49,6 @@ except NotImplementedError as e: print("int ->", e)
 PYEOF
   echo "--- pytest"
   PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider tests/ops_unit_test.py -k logaddexp 2>&1 | filt | tail -3
-  PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider tests/errors_test.py -k logaddexp 2>&1 | filt | tail -3
   echo "--- bazel, as CI runs it"
   for T in "//tests:ops_unit_test_tpu-$V" "//tests:errors_test_tpu" "//tests:ops_test_tpu-$V"; do
     bazel test "$T" --test_filter="*logaddexp*" --config=no_rbe --local_test_jobs=1 --cache_test_results=no --test_output=errors 2>&1 | grep -E "^//|PASSED|FAILED|Executed|ERROR|NO STATUS|no test" | tail -4

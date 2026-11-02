@@ -187,8 +187,17 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
 - Maintainer adivinpatel04 on #6111: one issue per op, and the batch branch is not of reviewable quality. Replied, closed #6111,
   filed #6118 for `logaddexp.out` alone with branch `logaddexp` on the fork (9 files, +211/-1). Self-review found one semantic
   bug in the batch version: `force_float_inputs = true` promoted integer inputs, while ATen raises NotImplementedError for them;
-  the single-op branch raises. Dropped the out-device/alias checks that `BinaryOpOut` already performs. Not yet built or run on a
-  TPU (no VM up; cache disk deleted). PR blocked by the 3-open-PR limit.
+  the single-op branch raises. Dropped the out-device/alias checks that `BinaryOpOut` already performs. PR blocked by the
+  3-open-PR limit.
+- Built and tested on a v6e-1 (asia-south1-b, 2026-11-02; on-demand capacity failed in six other zones and queued requests in
+  us-east5-b died with a Google-side internal error). Two fixes came out of the first build: the stablehlo builders take
+  `MlirOp&` and reject temporaries, so every intermediate is now a named lvalue (dc01e924d); and the kernel macro prefixes error
+  messages with `logaddexp(): `, which the errors test now expects (ad18185ce). Final run (`results/logaddexp_v6e1_run3.txt`):
+  semantics match CPU on 0, +-1, +-100, +-inf, mixed inf and nan (`allclose(equal_nan=True)` True); integer inputs raise
+  NotImplementedError; bazel `ops_unit_test_tpu-v6e`, `errors_test_tpu`, `ops_test_tpu-v6e` all PASSED with `--test_filter=*logaddexp*`.
+  `errors_test.py` cannot run under plain pytest (absl flags unparsed); bazel is the authoritative runner.
+- Main wheel build from a cold disk cache took 37 min on the v6e-1 (44 vCPU); the branch rebuild took 4 min on top of it.
+  `attach-disk` failed with an internal error in this project, so the build ran on the 100 GB boot disk (60% used after both builds).
 - Remaining ops go one at a time after #6118 is reviewed: logaddexp2, smooth_l1_loss, huber_loss, nansum, std_mean, trace, addbmm.
 
 ## 13. Multi-chip validation on a v6e-4 (us-east5-b, 2026-11-01)
