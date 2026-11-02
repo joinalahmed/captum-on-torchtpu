@@ -198,6 +198,11 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
   `errors_test.py` cannot run under plain pytest (absl flags unparsed); bazel is the authoritative runner.
 - Main wheel build from a cold disk cache took 37 min on the v6e-1 (44 vCPU); the branch rebuild took 4 min on top of it.
   `attach-disk` failed with an internal error in this project, so the build ran on the 100 GB boot disk (60% used after both builds).
+- Maintainer adivinpatel04 on #6118 (2026-11-02 17:35 UTC): hold off on new op issues and PRs until #6105 (max_unpool, issue
+  #6103) merges; ops are reviewed sequentially so feedback carries forward. PR #6130 for logaddexp was opened before that comment
+  was read and closed the same day with a note; it reopens after #6105 lands with its review feedback applied.
+- #6102 (scalar buffer cache bound) closed as a duplicate of apullin's #6037, filed two days earlier with the same 1024-entry
+  clear-on-full design. Maintainer cota invited improvements to #6037.
 - Remaining ops go one at a time after #6118 is reviewed: logaddexp2, smooth_l1_loss, huber_loss, nansum, std_mean, trace, addbmm.
 
 ## 13. Multi-chip validation on a v6e-4 (us-east5-b, 2026-11-01)
