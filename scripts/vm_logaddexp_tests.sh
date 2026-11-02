@@ -14,7 +14,7 @@ if [ ! -d ~/env_fix ]; then
   TORCH_PIN=$(grep -oE "^torch==[0-9.]+\+cpu" requirements/requirements_3_14.txt | head -1 | cut -d= -f3)
   uv venv -q --python 3.14 ~/env_fix
   uv pip install -q --python ~/env_fix/bin/python "torch==${TORCH_PIN:-2.11.0+cpu}" --index-url https://download.pytorch.org/whl/cpu
-  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.51" pytest absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq attrs cattrs scikit-learn
+  uv pip install -q --python ~/env_fix/bin/python "libtpu>=0.0.51" pytest absl-py parameterized numpy portpicker expecttest hypothesis etils pyzmq attrs cattrs safetensors scikit-learn
 fi
 PY=~/env_fix/bin/python
 
