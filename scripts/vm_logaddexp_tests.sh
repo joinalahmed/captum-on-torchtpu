@@ -22,7 +22,12 @@ log "checkout logaddexp"
 git fetch -q origin logaddexp && git checkout -q -B logaddexp FETCH_HEAD && git log --oneline -1 | tee -a ~/logaddexp_summary.log
 log "build"
 nice -n 10 bazel build --config=wheel_common //ci/wheel:torch_tpu_wheel --config=no_rbe --local_cpu_resources=HOST_CPUS*0.8 > ~/build_logaddexp.log 2>&1
-echo "BUILD_EXIT=$?" >> ~/build_logaddexp.log; tail -1 ~/build_logaddexp.log | tee -a ~/logaddexp_summary.log
+BUILD_EXIT=$?
+echo "BUILD_EXIT=$BUILD_EXIT" >> ~/build_logaddexp.log; tail -1 ~/build_logaddexp.log | tee -a ~/logaddexp_summary.log
+if [ "$BUILD_EXIT" -ne 0 ]; then
+  grep -E "error:" ~/build_logaddexp.log | tee -a ~/logaddexp_summary.log
+  log "ALL DONE (build failed)"; exit 1
+fi
 WHL=$(ls -t bazel-bin/ci/wheel/torch_tpu-*.whl | head -1)
 uv pip install -q --python ~/env_fix/bin/python --reinstall --no-deps "$WHL" 2>&1 | tail -1
 SP=$($PY -c "import torch_tpu, os; print(os.path.dirname(torch_tpu.__file__))" 2>/dev/null | tail -1)
