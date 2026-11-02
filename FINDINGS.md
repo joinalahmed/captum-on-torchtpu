@@ -183,6 +183,14 @@ with any dim bounded (eager), scalar variants pass -> moved to a diagnosed reaso
   collaborators/org members as assignees (`/repos/.../assignees/joinalahmed` -> 404) and the repo has no `/assign` bot; each
   comment asks a maintainer to assign.
 
+## 12b. Review feedback on the missing-ops batch (2026-11-02)
+- Maintainer adivinpatel04 on #6111: one issue per op, and the batch branch is not of reviewable quality. Replied, closed #6111,
+  filed #6118 for `logaddexp.out` alone with branch `logaddexp` on the fork (9 files, +211/-1). Self-review found one semantic
+  bug in the batch version: `force_float_inputs = true` promoted integer inputs, while ATen raises NotImplementedError for them;
+  the single-op branch raises. Dropped the out-device/alias checks that `BinaryOpOut` already performs. Not yet built or run on a
+  TPU (no VM up; cache disk deleted). PR blocked by the 3-open-PR limit.
+- Remaining ops go one at a time after #6118 is reviewed: logaddexp2, smooth_l1_loss, huber_loss, nansum, std_mean, trace, addbmm.
+
 ## 13. Multi-chip validation on a v6e-4 (us-east5-b, 2026-11-01)
 Capacity: on-demand and spot v5litepod-4/8 and v6e-4/8 were unavailable in us-east5-b and us-central1-a all morning
 ("Insufficient capacity"); a v5litepod-8 is also over the 4-chip per-zone serving quota. A queued v6e-4 landed after ~3 h.
