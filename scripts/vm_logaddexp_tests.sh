@@ -46,8 +46,9 @@ PYEOF
   PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider tests/ops_unit_test.py -k logaddexp 2>&1 | filt | tail -3
   PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider tests/errors_test.py -k logaddexp 2>&1 | filt | tail -3
   echo "--- bazel, as CI runs it"
-  bazel test //tests:ops_test_tpu-$V --test_filter="TestOps.test_logaddexp" --config=no_rbe --local_test_jobs=1 --cache_test_results=no --test_output=errors 2>&1 | grep -E "^//|PASSED|FAILED|Executed|ERROR" | tail -4
-  bazel test //tests:errors_test_tpu-$V --test_filter="*logaddexp*" --config=no_rbe --local_test_jobs=1 --cache_test_results=no --test_output=errors 2>&1 | grep -E "^//|PASSED|FAILED|Executed|ERROR|no test" | tail -4
+  for T in "//tests:ops_unit_test_tpu-$V" "//tests:errors_test_tpu" "//tests:ops_test_tpu-$V"; do
+    bazel test "$T" --test_filter="*logaddexp*" --config=no_rbe --local_test_jobs=1 --cache_test_results=no --test_output=errors 2>&1 | grep -E "^//|PASSED|FAILED|Executed|ERROR|NO STATUS|no test" | tail -4
+  done
 } > ~/results_logaddexp.txt 2>&1
 cat ~/results_logaddexp.txt | tee -a ~/logaddexp_summary.log
 log "ALL DONE"
