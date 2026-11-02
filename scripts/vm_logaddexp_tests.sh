@@ -21,7 +21,7 @@ PY=~/env_fix/bin/python
 log "checkout logaddexp"
 git fetch -q origin logaddexp && git checkout -q -B logaddexp FETCH_HEAD && git log --oneline -1 | tee -a ~/logaddexp_summary.log
 log "build"
-nice -n 10 bazel build --config=wheel_common //ci/wheel:torch_tpu_wheel --config=no_rbe --local_cpu_resources=HOST_CPUS*0.8 > ~/build_logaddexp.log 2>&1
+nice -n 10 bazel build --config=wheel_common //ci/wheel:torch_tpu_wheel --config=no_rbe --local_resources=cpu=HOST_CPUS*0.8 > ~/build_logaddexp.log 2>&1
 BUILD_EXIT=$?
 echo "BUILD_EXIT=$BUILD_EXIT" >> ~/build_logaddexp.log; tail -1 ~/build_logaddexp.log | tee -a ~/logaddexp_summary.log
 if [ "$BUILD_EXIT" -ne 0 ]; then

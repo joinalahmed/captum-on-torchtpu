@@ -29,7 +29,7 @@ rm -f "$SUM" "$RES"
 log "checkout $BRANCH"
 git fetch -q origin "$BRANCH" && git checkout -q -B "$BRANCH" FETCH_HEAD && git log --oneline -1 | tee -a "$SUM"
 log "build"
-nice -n 10 bazel build --config=wheel_common //ci/wheel:torch_tpu_wheel --config=no_rbe --local_cpu_resources=HOST_CPUS*0.8 > "$BLOG" 2>&1
+nice -n 10 bazel build --config=wheel_common //ci/wheel:torch_tpu_wheel --config=no_rbe --local_resources=cpu=HOST_CPUS*0.8 > "$BLOG" 2>&1
 BUILD_EXIT=$?
 echo "BUILD_EXIT=$BUILD_EXIT" >> "$BLOG"; tail -1 "$BLOG" | tee -a "$SUM"
 if [ "$BUILD_EXIT" -ne 0 ]; then
