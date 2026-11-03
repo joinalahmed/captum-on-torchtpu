@@ -61,7 +61,12 @@ df -h / | tail -1 | tee -a "$LOG"
 # Bazel recreates the ones the next chunk needs.
 log "test"
 OUT=$(bazel info output_path 2>/dev/null)
-mapfile -t ALL < <(bazel query "tests($TARGETS)" 2>/dev/null)
+# //tests/torch (device-generic upstream PyTorch tests) refuse to run below
+# torch 2.14, and the run_upstream_example_* targets need the torchtpu-shared
+# GCS bucket mounted; both fail identically on every revision here, so they
+# are left out (124 targets, ~25 min per run).
+mapfile -t ALL < <(bazel query "tests($TARGETS)" 2>/dev/null \
+  | grep -v -E '^//tests/torch[:/]|run_upstream_example')
 log "test targets under $TARGETS: ${#ALL[@]}"
 : > ~/fullsuite_${LABEL}_test.log
 TEST_EXIT=0; CHUNK=${CHUNK:-40}
