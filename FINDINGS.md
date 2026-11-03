@@ -20,7 +20,8 @@ LayerIntegratedGradients.
 | torchtpu_xai batched IG | 2.1e-3 | 1.0e-7 |
 | GradientShap | 3.6e-2 | 2.5e-2 (random sampling differs across devices; expected, not a bug) |
 
-Takeaway: on TPU, fp32 matmuls default to reduced precision, which shows up as ~1e-3 relative error in
+Takeaway: on TPU, fp32 matmuls default to reduced precision ("medium", `Precision.DEFAULT`: bf16 inputs on the
+MXU; TorchTPU maintainer cota confirmed the default is "medium", not "high"), which shows up as ~1e-3 relative error in
 attributions. Setting matmul precision to "highest" matches CPU to ~1e-7. Attribution users should set it.
 Caveat: tiny models; confirm on a real transformer.
 
@@ -286,6 +287,45 @@ c32405eea the four reported cases fail exactly as described (f1 and f2 return th
 compile with the quoted `view()` errors) while the original repro passes, 4/8; on base main f7172418b the original
 repro fails (`x * cum[1]` gives zeros, `x + cum[1]` gives `x`) while the four stride cases pass, 5/8. Only the fix
 passes 8/8.
+
+## 15. Full regression suites before any further PR push (2026-11-03)
+After the #6106 stride regression, every PR and every branch gets the full upstream-style test run, diffed against its
+base, before it is pushed again.
+
+**Captum (done).** `tests/attr` with `pytest -n 8` on CPU (`scripts/vm_captum_tests.sh`), upstream `master` b89cccbe
+(Captum develops on `master`; its `main` is years stale and a first comparison against it was discarded) vs the
+#1951 branch `tpu-accelerator-tests` (254508ef) and the #1952 branch `lig-cumsum-python-ints` (4a3aab19), each one
+commit ahead of that master: 783 tests each, identical pass/fail sets. The 76 failures and 23 errors are pre-existing on
+master in this environment (vLLM provider tests, KernelSHAP random baselines, Lime, data-parallel). Files:
+`results/captum_suite/`.
+
+**torch_tpu (running).** `scripts/vm_full_suite.sh REV LABEL` on the v6e-1: builds the `requires-tpu*` targets under
+`//tests/...` and runs them with the `ci_tpu_v6` tag set minus the multi-chip, v5p and v7x tags, one test at a time,
+714 test targets per revision, one `//target STATUS` line each in `~/fullsuite_LABEL.results`. `scripts/vm_suite_chain.sh`
+queues revisions by PID wait. Order (grouped by XLA pin): #6106 base f7172418b and head de1abb50c; #6105 base 99aa3d587
+and head 73321c439; `988b22f12`; then the seven op branches of §14. Results land here as they finish.
+
+Three lessons from getting that to run on a 100 GB boot disk: (1) the VM checkout had f7172418b's XLA pin and generated
+docs left behind as uncommitted changes, so the first baseline was "988b22f12 + newer XLA"; the script now does
+`git checkout -f` plus `git clean` and logs `git status`. (2) The C++ unit tests under `//csrc/...` build XLA again under
+a configuration transition (~30 GB) and are skipped. (3) Every `py_test` gets a runfiles tree of ~100 MB of symlinks (one
+4 KB block each), ~50 GB for the whole set, so the tests run in chunks of 40 with the runfiles trees deleted between
+chunks. `--test_summary=terse` lists only failures; `short` is needed for a diffable list.
+
+**Capacity.** Flex-Start, as support suggested, is not usable in this project today: every v6e Flex-Start or Spot request
+(Compute Engine `instances create` and `gcloud alpha compute tpus queued-resources create --provisioning-model=flex-start`)
+returns "Write access to project denied: please check billing account associated" with billing enabled; v5litepod-8
+exceeds the 4-chip preemptible quota per zone; the one accepted v5litepod-4 request (us-west4-a) failed in provisioning
+with an internal error. Everything runs on the single v6e-1.
+
+## 12c. Maintainer feedback on the write-up (cota, 2026-11-03)
+#6114 (explainability example + case study) was closed as not planned: in-tree `docs/` and `examples/` stay limited to
+first-party workflows testable in internal CI, no third-party deps; bug reports and narrow fixes such as #6106 remain
+welcome. The maintainers also asked to spread submissions over time. Two corrections to apply to anything published: the
+default float32 matmul precision is `"medium"` / `Precision.DEFAULT` (our text said "reduced precision, bf16 inputs",
+which is that mode, now named explicitly), and the eager mode can be switched in-process with
+`torch.tpu.set_eager_mode(torch.tpu.EagerMode.DEFER_AND_FUSE)`, not only through the env var at import. Fixed on the fork
+branch `explainability-example` (c6ac51ffb), in the dev.to draft and above in §1.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
