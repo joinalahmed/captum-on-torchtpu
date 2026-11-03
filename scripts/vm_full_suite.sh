@@ -13,7 +13,11 @@ LOG=~/fullsuite_$LABEL.log; RES=~/fullsuite_$LABEL.results
 log() { echo "##### $* $(date -u +%H:%M:%S)" | tee -a "$LOG"; }
 rm -f "$LOG" "$RES"
 case "$REV" in origin/*) git fetch -q origin "${REV#origin/}" && REV=FETCH_HEAD;; esac
-git checkout -q --detach "$REV" && log "checkout $LABEL: $(git log --oneline -1)"
+# -f: a previous run may have left generated files (docs/api_reference.*)
+# modified; a stray edit would silently taint every later run.
+git checkout -q -f --detach "$REV" && log "checkout $LABEL: $(git log --oneline -1)" \
+  || { echo "CHECKOUT FAILED" | tee -a "$LOG"; log "ALL DONE"; exit 1; }
+git status --short | tee -a "$LOG"
 
 # Single-chip TPU tests only: the ci_tpu_v6 (or ci_tpu_v5 on a v5e host)
 # positive set without the :4/:8 multi-chip tags, v5p and v7x. 'manual'
@@ -35,24 +39,22 @@ if [ "$CHIPS" -gt 1 ]; then
 fi
 log "host: accelerator=${ACCEL:-unknown} gen=$GEN chips=$CHIPS"
 
-# //tests/... holds the Python op, error, compile and API suites; the C++
-# unit tests under //csrc/ops (op_names_test and friends) run without the TPU
-# tag filter since they are CPU tests. Everything else under //... (examples,
-# experimental kernels) does not fit the 100 GB boot disk and is unrelated.
+# //tests/... holds the Python op, error, compile and API suites. Everything
+# else under //... (examples, experimental kernels) does not fit the 100 GB
+# boot disk and is unrelated.
 TARGETS="//tests/..."
 log "build test targets"
 bazel build --config=tpu_envvars --config=no_rbe --local_resources=cpu=HOST_CPUS*0.8 \
   --experimental_disk_cache_gc_max_size=8G \
   --build_tag_filters="$TAGS" -- $TARGETS > ~/fullsuite_${LABEL}_build.log 2>&1
-echo "BUILD_EXIT=$?" | tee -a "$LOG"
+BUILD_EXIT=$?
+echo "BUILD_EXIT=$BUILD_EXIT" | tee -a "$LOG"
 df -h / | tail -1 | tee -a "$LOG"
+[ "$BUILD_EXIT" -eq 0 ] || { log "ALL DONE (build failed)"; exit 1; }
 
-log "csrc unit tests"
-bazel test --config=no_rbe --keep_going --experimental_disk_cache_gc_max_size=8G \
-  --cache_test_results=no --test_output=errors --test_summary=terse \
-  -- //csrc/ops/... //csrc/common/... > ~/fullsuite_${LABEL}_csrc.log 2>&1
-echo "CSRC_TEST_EXIT=$?" | tee -a "$LOG"
-
+# The C++ unit tests under //csrc/ops and //csrc/common are not run: they
+# build XLA again under a different configuration transition (~30 GB), which
+# does not fit next to the wheel build on a 100 GB boot disk.
 log "test"
 bazel test --config=tpu_envvars --config=no_rbe --keep_going \
   --local_test_jobs=$CHIPS "${RUN_UNDER[@]}" \
@@ -61,7 +63,6 @@ bazel test --config=tpu_envvars --config=no_rbe --keep_going \
   --cache_test_results=no --test_output=errors --test_summary=terse \
   -- $TARGETS > ~/fullsuite_${LABEL}_test.log 2>&1
 echo "TEST_EXIT=$?" | tee -a "$LOG"
-cat ~/fullsuite_${LABEL}_csrc.log >> ~/fullsuite_${LABEL}_test.log
 
 # One line per target: "//pkg:target STATUS". The terse summary lists every
 # target with its status at the end of the log.
