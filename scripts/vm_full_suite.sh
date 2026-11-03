@@ -17,7 +17,7 @@ case "$REV" in origin/*) git fetch -q origin "${REV#origin/}" && REV=FETCH_HEAD;
 # modified; a stray edit would silently taint every later run.
 git checkout -q -f --detach "$REV" && log "checkout $LABEL: $(git log --oneline -1)" \
   || { echo "CHECKOUT FAILED" | tee -a "$LOG"; log "ALL DONE"; exit 1; }
-git status --short | tee -a "$LOG"
+git clean -fdq -e bazel-\* && git status --short | tee -a "$LOG"
 
 # Single-chip TPU tests only: the ci_tpu_v6 (or ci_tpu_v5 on a v5e host)
 # positive set without the :4/:8 multi-chip tags, v5p and v7x. 'manual'
