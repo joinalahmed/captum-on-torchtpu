@@ -249,6 +249,39 @@ Setup/test scripts: `scripts/vm_multichip_setup.sh`, `scripts/vm_multichip_tests
   Still uncovered: a v5e-8 (quota) and `tests/distributed/`. The second node and both build disks were deleted at ~18:15 UTC on
   2026-11-01; nothing from this work is billing.
 
+## 14. Remaining ops, one branch each, built and tested on a v6e-1 (asia-south1-b, 2026-11-02/03)
+Maintainer adivinpatel04 asked on #6118 to hold new op issues and PRs until #6105 merges, so these are fork branches
+only, each a single commit on `988b22f12` (`build-base`): the last upstream main that builds from source on the VM.
+Current main (b6224d2f0, after "Update Bazel to 9.3.1 and rules_python to 2.4.5") fails in `csrc/ops/xla_utils.cc`
+because the torch 2.16 wheel's bundled protobuf headers shadow XLA's. Each branch: kernel dir mirroring the nearest
+kernel on main, `op_names.h`, eager registration, `native_functions_data.py`, `ops_unit_test.py`, `errors_test.py`,
+plus a TPU-vs-CPU check script in `scripts/checks/`. Runner: `scripts/vm_branch_tests.sh BRANCH FILTER CHECK`.
+
+| Branch | Head | Semantics vs CPU | pytest | bazel ops_unit / errors / ops | Notes |
+|---|---|---|---|---|---|
+| `logaddexp2` | 458c993eb | 9 values incl. +-inf, nan; bf16; broadcast | 2 passed | PASSED x3 | int64 -> NotImplementedError |
+| `std_mean` | 043c512a2 | 13 cases incl. correction >= N (nan + warning), bf16 | 38 passed | PASSED x3 | mirrors var_mean |
+| `nansum` | 270b400be | 13 cases incl. all-NaN rows, int/bool -> int64, empty | 2 passed | PASSED x3 (+ tpu_errors_test) | complex rejected (CUDA accepts) |
+| `trace` | 6d357d9ff | square/wide/tall/0x0/1x1, bf16, int32 -> int64 | 3 passed | PASSED x3 | CPU torch 2.11 has no bf16 trace; test uses f32 reference |
+| `addbmm` | 787fbd438 | 11 cases incl. beta=0 ignores NaN, empty batch, broadcast, in-place | 10 passed | PASSED x3 | mirrors baddbmm |
+| `smooth_l1_loss` | adf1a4009 | fwd+bwd, 3 reductions, bf16, beta=0, boundary, broadcast | 21 passed | PASSED x3 (+ tpu_errors_test) | functional op checks beta before dispatch; test calls `.out` |
+| `huber_loss` | 9ffd2719d | fwd+bwd, 3 reductions, bf16, boundary, broadcast; delta <= 0 rejected | 21 passed | PASSED x3 | |
+
+Raw summaries: `results/<branch>_v6e1.txt`, `results/final_steps_v6e1.txt`. Build time per branch ~27 min (op_names.h
+touches many TUs), tests ~15 min.
+
+Fixes found only by building: stablehlo builders take `MlirOp&` (temporaries fail to compile); the kernel macro prefixes
+error messages with `op(): `; `torch.nn.functional.smooth_l1_loss` validates beta itself, so the kernel check is only
+reachable through `aten.smooth_l1_loss.out`.
+
+### #6106 review (apullin, 2026-11-02): preserve CPU argument strides
+Forcing `contiguous_format` changed the strides of transposed and channels_last CPU arguments, so views inside the TPU
+partition (as_strided, t().reshape, permute().reshape) gave wrong values or failed to compile; four cases pass on main
+and broke with the PR. Fix (de1abb50c on the PR branch): `torch.empty_like(arg)` (preserve_format) for compile metadata
+and plain `.to(device)` at run time; both give storage offset 0 and keep dense strides. Verified on the v6e-1 with caches
+off: original repro (4 cases) and the four reported cases all match CPU (`scripts/checks/check_cpu_view_args.py`, 8/8);
+`tests/compile/split_compile_test.py` 18 passed incl. the new `test_cpu_argument_strides_are_preserved`; bazel target PASSED.
+
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
 - Inseq device allow-list PR; torch_tpu examples/docs entry; precision-guide numbers (#5727); #4409 triage comment.
