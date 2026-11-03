@@ -55,14 +55,29 @@ df -h / | tail -1 | tee -a "$LOG"
 # The C++ unit tests under //csrc/ops and //csrc/common are not run: they
 # build XLA again under a different configuration transition (~30 GB), which
 # does not fit next to the wheel build on a 100 GB boot disk.
+# Every py_test gets a runfiles tree of ~100 MB of symlinks (one 4 KB block
+# each), so ~500 test targets need ~50 GB that the disk does not have. The
+# tests run in chunks and the runfiles trees are deleted after each chunk;
+# Bazel recreates the ones the next chunk needs.
 log "test"
-bazel test --config=tpu_envvars --config=no_rbe --keep_going \
-  --local_test_jobs=$CHIPS "${RUN_UNDER[@]}" \
-  --experimental_disk_cache_gc_max_size=8G \
-  --test_tag_filters="$TAGS" --test_timeout=600,1200,2400,4800 \
-  --cache_test_results=no --test_output=errors --test_summary=terse \
-  -- $TARGETS > ~/fullsuite_${LABEL}_test.log 2>&1
-echo "TEST_EXIT=$?" | tee -a "$LOG"
+OUT=$(bazel info output_path 2>/dev/null)
+mapfile -t ALL < <(bazel query "tests($TARGETS)" 2>/dev/null)
+log "test targets under $TARGETS: ${#ALL[@]}"
+: > ~/fullsuite_${LABEL}_test.log
+TEST_EXIT=0; CHUNK=${CHUNK:-40}
+for ((i = 0; i < ${#ALL[@]}; i += CHUNK)); do
+  bazel test --config=tpu_envvars --config=no_rbe --keep_going \
+    --local_test_jobs=$CHIPS "${RUN_UNDER[@]}" \
+    --experimental_disk_cache_gc_max_size=8G \
+    --build_tag_filters="$TAGS" --test_tag_filters="$TAGS" \
+    --test_timeout=600,1200,2400,4800 \
+    --cache_test_results=no --test_output=errors --test_summary=terse \
+    -- "${ALL[@]:i:CHUNK}" >> ~/fullsuite_${LABEL}_test.log 2>&1
+  rc=$?; [ $rc -eq 0 ] || [ $rc -eq 4 ] || TEST_EXIT=$rc
+  echo "chunk $i exit=$rc $(df -h / | tail -1 | awk '{print $4" free"}')" | tee -a "$LOG"
+  sudo rm -rf "$OUT"/k8-opt/bin/tests
+done
+echo "TEST_EXIT=$TEST_EXIT" | tee -a "$LOG"
 
 # One line per target: "//pkg:target STATUS". The terse summary lists every
 # target with its status at the end of the log.
