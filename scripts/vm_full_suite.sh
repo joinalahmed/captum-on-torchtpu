@@ -71,16 +71,17 @@ for ((i = 0; i < ${#ALL[@]}; i += CHUNK)); do
     --experimental_disk_cache_gc_max_size=8G \
     --build_tag_filters="$TAGS" --test_tag_filters="$TAGS" \
     --test_timeout=600,1200,2400,4800 \
-    --cache_test_results=no --test_output=errors --test_summary=terse \
+    --cache_test_results=no --test_output=errors --test_summary=short \
     -- "${ALL[@]:i:CHUNK}" >> ~/fullsuite_${LABEL}_test.log 2>&1
   rc=$?; [ $rc -eq 0 ] || [ $rc -eq 4 ] || TEST_EXIT=$rc
-  echo "chunk $i exit=$rc $(df -h / | tail -1 | awk '{print $4" free"}')" | tee -a "$LOG"
+  log "chunk $i exit=$rc $(df -h / | tail -1 | awk '{print $4" free"}')"
   sudo rm -rf "$OUT"/k8-opt/bin/tests
 done
 echo "TEST_EXIT=$TEST_EXIT" | tee -a "$LOG"
 
-# One line per target: "//pkg:target STATUS". The terse summary lists every
-# target with its status at the end of the log.
+# One line per target: "//pkg:target STATUS". The short summary lists every
+# target with its status at the end of each chunk (terse lists only
+# failures, which makes two runs undiffable).
 grep -E "^//[^ ]+ +(PASSED|FAILED|TIMEOUT|FLAKY|NO STATUS|\(cached\) PASSED)" ~/fullsuite_${LABEL}_test.log \
   | sed -E 's/ +/ /g; s/ in [0-9.]+s.*//; s/ \(cached\)//' | sort -u > "$RES"
 echo "targets: $(wc -l < "$RES")  passed: $(grep -c ' PASSED' "$RES")  failed: $(grep -c ' FAILED' "$RES")  other: $(grep -vc ' PASSED\| FAILED' "$RES")" | tee -a "$LOG"
