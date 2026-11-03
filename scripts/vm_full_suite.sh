@@ -15,9 +15,25 @@ rm -f "$LOG" "$RES"
 case "$REV" in origin/*) git fetch -q origin "${REV#origin/}" && REV=FETCH_HEAD;; esac
 git checkout -q --detach "$REV" && log "checkout $LABEL: $(git log --oneline -1)"
 
-# Single-chip TPU tests only: the ci_tpu_v6 positive set without the :4/:8
-# multi-chip tags, v5p and v7x. 'manual' targets are excluded by //... itself.
-TAGS="requires-tpu,requires-tpu-v6e,requires-tpu-v5lite,-requires-tpu-v5lite:4,-requires-tpu-v5lite:8,-requires-tpu-v5p,-requires-tpu-v5p:4,-requires-tpu-v7x,-requires-tpu-v7x:4,-notest,-nobuild,-fails-on-tpu-v6,-requires-newest-deps"
+# Single-chip TPU tests only: the ci_tpu_v6 (or ci_tpu_v5 on a v5e host)
+# positive set without the :4/:8 multi-chip tags, v5p and v7x. 'manual'
+# targets are excluded by //... itself. On a multi-chip host the tests run
+# one per chip through upstream's run_under wrapper.
+ACCEL=$(curl -sf -H Metadata-Flavor:Google \
+  http://metadata.google.internal/computeMetadata/v1/instance/attributes/accelerator-type 2>/dev/null)
+CHIPS=${CHIPS:-$(ls /dev/accel* 2>/dev/null | wc -l)}
+[ "$CHIPS" -ge 1 ] 2>/dev/null || CHIPS=1
+case "$ACCEL" in
+  v5litepod*) GEN=v5; GEN_TAGS="requires-tpu-v5lite,-requires-tpu-v6e,-fails-on-tpu-v5";;
+  *)          GEN=v6; GEN_TAGS="requires-tpu-v6e,requires-tpu-v5lite,-fails-on-tpu-v6";;
+esac
+TAGS="requires-tpu,$GEN_TAGS,-requires-tpu-v5lite:4,-requires-tpu-v5lite:8,-requires-tpu-v5p,-requires-tpu-v5p:4,-requires-tpu-v7x,-requires-tpu-v7x:4,-notest,-nobuild,-requires-newest-deps"
+RUN_UNDER=()
+if [ "$CHIPS" -gt 1 ]; then
+  RUN_UNDER=(--run_under="$PWD/ci/tools/parallel_accelerator_execute.sh"
+    --test_env=TORCH_TPU_ACCELERATOR_COUNT=$CHIPS)
+fi
+log "host: accelerator=${ACCEL:-unknown} gen=$GEN chips=$CHIPS"
 
 # //tests/... holds the Python op, error, compile and API suites; the C++
 # unit tests under //csrc/ops (op_names_test and friends) run without the TPU
@@ -38,7 +54,8 @@ bazel test --config=no_rbe --keep_going --experimental_disk_cache_gc_max_size=8G
 echo "CSRC_TEST_EXIT=$?" | tee -a "$LOG"
 
 log "test"
-bazel test --config=tpu_envvars --config=no_rbe --keep_going --local_test_jobs=1 \
+bazel test --config=tpu_envvars --config=no_rbe --keep_going \
+  --local_test_jobs=$CHIPS "${RUN_UNDER[@]}" \
   --experimental_disk_cache_gc_max_size=8G \
   --test_tag_filters="$TAGS" --test_timeout=600,1200,2400,4800 \
   --cache_test_results=no --test_output=errors --test_summary=terse \
