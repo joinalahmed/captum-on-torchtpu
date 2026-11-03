@@ -281,6 +281,11 @@ and broke with the PR. Fix (de1abb50c on the PR branch): `torch.empty_like(arg)`
 and plain `.to(device)` at run time; both give storage offset 0 and keep dense strides. Verified on the v6e-1 with caches
 off: original repro (4 cases) and the four reported cases all match CPU (`scripts/checks/check_cpu_view_args.py`, 8/8);
 `tests/compile/split_compile_test.py` 18 passed incl. the new `test_cpu_argument_strides_are_preserved`; bazel target PASSED.
+Negative confirmation (`results/cpuview_negative_v6e1.txt`, same script, same VM): on the contiguous_format revision
+c32405eea the four reported cases fail exactly as described (f1 and f2 return the transposed values, f3 and f4 fail to
+compile with the quoted `view()` errors) while the original repro passes, 4/8; on base main f7172418b the original
+repro fails (`x * cum[1]` gives zeros, `x + cum[1]` gives `x`) while the four stride cases pass, 5/8. Only the fix
+passes 8/8.
 
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
