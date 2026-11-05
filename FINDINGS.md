@@ -436,3 +436,16 @@ request for this; all seven branches are re-queued after the benchmark. Tests fo
   build — candidate fix PR (drop torch's protobuf dir from the include path, e.g.
   copy headers into a tree without it, or add protobuf's include first). Not acted
   on; one PR at a time and the user approves outward actions.
+
+## 2026-11-05 ~18:50 UTC — scalar-cache benchmark done; follow-up PR #6277 opened
+
+- Results (v6e-1, base 988b22f12 + 1e71c2b51; bench_results/): sweep = noise
+  everywhere, dropped. twogen: hits unchanged; 1500-cycle dispatch p50 31→10.6 us
+  (DEFER_NEVER) and 32→9.4 us, 48.6→33.5 us/op (DEFER_AND_FUSE); fused region
+  across eviction 417→390 us and +1→0 compiles; AdamW+cosine unchanged; live
+  buffers for 4000 distinct scalars +1952 vs +928. Scalar tests 5/5 on TPU.
+- User chose PR over comment. Pushed scalar-cache-twogen (6c3b10d7e, rebased on
+  a43dc0aba, authored joinalahmed, Assisted-by only) to fork; opened
+  https://github.com/google-pytorch/torch_tpu/pull/6277 referencing #6037/#6102,
+  with an explicit reviewer question (2048 bound vs two generations of 512).
+- Chain restarted by job3 trap at 18:25 UTC with all seven branches.
