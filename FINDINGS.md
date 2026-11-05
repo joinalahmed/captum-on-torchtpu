@@ -411,3 +411,28 @@ request for this; all seven branches are re-queued after the benchmark. Tests fo
 - Lesson: killing a waiter whose EXIT trap restarts the chain immediately
   restarts the chain; stop the chain again (or edit the trap) before the next
   job. Killing job2 only once was fine here because job3 stops the chain itself.
+
+## 2026-11-05 18:20 UTC — root cause of the main build failure: unsandboxed build + torch's bundled protobuf headers
+
+- Every torch wheel ships protobuf 3.x headers under `torch/include/google/protobuf`,
+  and the torch hub's `torch_headers` rule adds `torch/include` to the include path.
+  Main (rules_python 2.4.6, `bazel/pip_parse_targets.bzl`) excludes those files from
+  the declared hdrs "so they do not shadow @com_google_protobuf in sandboxed/remote
+  builds" — which only helps when the compiler cannot see undeclared files.
+- `--config=no_rbe` → `--config=local` → `--spawn_strategy=standalone`. Unsandboxed,
+  clang sees the whole repo dir, so XLA's protobuf-33.6 generated `xla_data.pb.h`
+  resolves `google/protobuf/io/coded_stream.h` to torch's old copy →
+  `PROTOBUF_NODISCARD`/`PROTOBUF_PREDICT_FALSE`/`uint8_t` errors in xla_utils.cc.
+  988b22f12 (rules_python 1.8.5 + patches, torch_headers depended on protobuf)
+  compiles unsandboxed, which is why the chain branches and #6105 still build.
+- VM supports user namespaces (`unshare -Ur true` ok). Fix to validate after the
+  benchmark: `--config=wheel_common --remote_cache= --remote_executor=
+  --google_default_credentials=false --spawn_strategy=linux-sandbox
+  --strategy=linux-sandbox` (+ `--strategy=TestRunner=standalone` for TPU tests).
+- Upstream's own "Build and Test Wheel against Local PyTorch" (local_torch.yml,
+  run 42065483896 on 2c17e0797) fails with the identical error through
+  `+torch_local_repo+local_torch/.../google/protobuf/stubs/stringpiece.h:188`,
+  plus grpc layering-check errors. So it is an upstream bug for any standalone
+  build — candidate fix PR (drop torch's protobuf dir from the include path, e.g.
+  copy headers into a tree without it, or add protobuf's include first). Not acted
+  on; one PR at a time and the user approves outward actions.
