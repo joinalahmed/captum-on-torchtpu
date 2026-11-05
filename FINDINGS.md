@@ -351,3 +351,12 @@ runs `ops_unit_test -k unpool`, `errors_test -k max_unpool2d` and the three baze
 huber_loss. Output: `~/pr6105_rework.summary` (ends with ALL DONE), `~/results_pr6105_rework.txt`.
 Lesson: inside `gcloud ... ssh --command`, `pgrep -f PATTERN` matches the `bash -c` wrapper itself unless
 the pattern is anchored (`^bash /home/...`).
+
+Update 09:40 UTC: the user chose to interrupt the logaddexp2 run instead of waiting. The interrupt went
+wrong once: an unanchored `pkill -f "bazel test ..."` inside `gcloud ssh --command` matched the ssh `bash -c`
+wrapper and killed the session; gcloud retried the command, and because killing the waiter fired its EXIT
+trap, the chain had restarted and each retry killed the next branch's run until the chain was exhausted
+(no results lost: those runs had only just started). Six orphaned bazel clients were killed by PID and the
+waiter relaunched with all seven branches queued after the rework test. Lessons: use `[p]attern` or `^bash
+/path` in pgrep/pkill over ssh; an EXIT trap also fires on SIGTERM, so a "restart the queue when done" trap
+needs a normal-exit flag.
