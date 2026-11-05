@@ -365,3 +365,7 @@ Update 11:10 UTC: ops_test verified to have no max_unpool entry (the earlier `Te
 tests). With the user's go-ahead, d4c4bd843 was pushed to fork/max-unpool2d (PR #6105 head), replies posted on all nine
 of basioli-k's threads, and the PR description updated (BuildScatterShlo lowering, floating-point-only input dtype,
 five error tests, test plan at d4c4bd843). No ops_test entry added, per the user.
+
+Update 12:30 UTC: the `cla/google` check failed on d4c4bd843 because of a `Co-Authored-By: ... <noreply@anthropic.com>`
+trailer (the CLA bot checks co-author emails). Commit message amended to the `Assisted-by:` line only and force-pushed
+as 2bdaa6b34 (identical tree); PR body and the first reply now cite 2bdaa6b34. Rule: no Co-Authored-By on CLA repos.
