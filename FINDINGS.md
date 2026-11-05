@@ -375,3 +375,15 @@ Update 13:40 UTC: the "GitHub Actions Scan" (zizmor, a Google org-level workflow
 files changed on main appeared as "changed" and triggered a scan of main's own workflows (exit 14, medium/high findings
 not related to the PR). Merging origin/main into max-unpool2d (1dff529c6, no conflicts) empties that diff; the scan
 now skips, cla/google passes. Lesson: keep PR branches current with main or the org scan fires on unrelated workflows.
+
+## Scalar cache follow-up (2026-11-05, after #6102 closed as duplicate of #6037)
+
+#6037 landed as 1e71c2b51 (full clear at 1024 entries). Candidate follow-up on branch `scalar-cache-sweep`
+(eea94500f): when full, erase only entries whose DeviceBufferList use_count()==1, clear as fallback. Answers
+benawilson's review note (a full clear can break dedup of a scalar reused inside a fused region). Expected
+gain is small unless measured otherwise, so `scripts/scalar_cache_bench.py` runs on the VM via
+`scripts/vm_scalar_cache_bench.sh`: hit/miss/cycle dispatch latency per mode, a fused-region scenario that
+reuses 0.9 around an eviction (compile count), and AdamW+cosine (compile count, ms/step, live allocations),
+on a wheel from upstream main and on main+patch. The logaddexp2 suite run was interrupted at the user's
+request for this; all seven branches are re-queued after the benchmark. Tests for the PR are drafted in
+`tests/accelerator_api_test.py` on the branch (eviction survival via allocation deltas, hit-path reuse).
