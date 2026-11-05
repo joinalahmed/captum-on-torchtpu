@@ -387,3 +387,27 @@ reuses 0.9 around an eviction (compile count), and AdamW+cosine (compile count, 
 on a wheel from upstream main and on main+patch. The logaddexp2 suite run was interrupted at the user's
 request for this; all seven branches are re-queued after the benchmark. Tests for the PR are drafted in
 `tests/accelerator_api_test.py` on the branch (eviction survival via allocation deltas, hit-path reuse).
+
+## 2026-11-05 17:40 UTC — scalar-cache benchmark: upstream main no longer builds on the VM; rerun on 988b22f12
+
+- Both wheel builds in `vm_scalar_cache_bench.sh` (upstream main 92b197376 and
+  main + sweep patch) failed in ~4 min with clang errors inside torch 2.16.0's
+  bundled protobuf headers (`PROTOBUF_PREDICT_FALSE`, `PROTOBUF_NODISCARD`,
+  `uint8_t` undeclared in `google/protobuf/stubs/stringpiece.h` and
+  `io/coded_stream.h`) while compiling `csrc/ops/xla_utils.cc`. Main now pins
+  torch 2.16.0 for Python 3.14; the VM toolchain compiles the 2.11 pin fine.
+  Not investigated further; the chain branches and #6105 are on the 2.11 pin.
+- `vm_scalar_cache_bench2.sh` (twogen on main) would have failed the same way;
+  killed it at 17:35 UTC. Its EXIT trap restarted the chain (pid 2798866,
+  logaddexp2 build) which `vm_scalar_cache_bench3.sh` stopped two minutes later.
+- Workaround: benchmark on 988b22f12 (last build-base; same XLA pin as the chain
+  branches, torch 2.11, ancestor of the landed clear 1e71c2b51). Local branches
+  bench-base (988b22f12 + cherry-pick 1e71c2b51 = 4e55a35b3), bench-sweep
+  (6423248dc) and bench-twogen (237262803); patches p_clear/p_sweep/p_twogen.
+  Job: `~/vm_scalar_cache_bench3.sh 988b22f12 <chain REV LABEL ...>`, started
+  17:36:07 UTC, pid 2827306. Writes `~/bench_{clear,sweep,twogen}.txt` and
+  `~/scalar_bench3.summary`; trap does bazel clean and restarts the chain with
+  all seven branches.
+- Lesson: killing a waiter whose EXIT trap restarts the chain immediately
+  restarts the chain; stop the chain again (or edit the trap) before the next
+  job. Killing job2 only once was fine here because job3 stops the chain itself.
