@@ -360,3 +360,8 @@ trap, the chain had restarted and each retry killed the next branch's run until 
 waiter relaunched with all seven branches queued after the rework test. Lessons: use `[p]attern` or `^bash
 /path` in pgrep/pkill over ssh; an EXIT trap also fires on SIGTERM, so a "restart the queue when done" trap
 needs a normal-exit flag.
+
+Update 11:10 UTC: ops_test verified to have no max_unpool entry (the earlier `TestOps.test_max_unpool` run executed 0
+tests). With the user's go-ahead, d4c4bd843 was pushed to fork/max-unpool2d (PR #6105 head), replies posted on all nine
+of basioli-k's threads, and the PR description updated (BuildScatterShlo lowering, floating-point-only input dtype,
+five error tests, test plan at d4c4bd843). No ops_test entry added, per the user.

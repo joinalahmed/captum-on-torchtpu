@@ -13,12 +13,23 @@ PATCH=~/pr6105_rework.patch
 log() { echo "##### $* $(date -u +%H:%M:%S)" | tee -a "$SUM"; }
 filt() { grep -vE '^(I0000|W0000|E0000|num_|peak_|Loading|WARNING|Successfully|Registered|Device|Initializing)|UserWarning|See https|compilation_cache'; }
 restart_chain() {
+  # Keep the test logs, then hand the chain a clean output tree: the PR branch
+  # and the chain's branches use different XLA pins, and stale outputs from
+  # both pins filled the 100 GB disk on 2026-11-05.
+  mkdir -p ~/pr6105_rework_testlogs
+  for t in ops_unit_test_tpu-v6e errors_test_tpu ops_test_tpu-v6e; do
+    find -L ~/torch_tpu/bazel-testlogs/tests/$t -name test.log 2>/dev/null | while read -r f; do
+      cp "$f" ~/pr6105_rework_testlogs/${t}_$(echo "$f" | md5sum | cut -c1-6).log
+    done
+  done
+  (cd ~/torch_tpu && bazel clean >> ~/pr6105_rework.log 2>&1); df -h / | tail -1 | tee -a "$SUM"
   if [ $# -ge 2 ]; then
     log "restarting chain: $*"
     nohup bash ~/vm_suite_chain.sh "$@" >> ~/suite_chain.log 2>&1 &
   fi
 }
-trap 'restart_chain "$@"' EXIT
+CHAIN_ARGS=("$@")
+trap 'restart_chain "${CHAIN_ARGS[@]}"' EXIT
 
 rm -f "$SUM" "$RES"
 while pid=$(pgrep -of "bash .*vm_full_suite.sh "); do
@@ -54,13 +65,16 @@ log "tests"
 {
   echo "--- pytest tests/ops_unit_test.py -k unpool"
   PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider tests/ops_unit_test.py -k unpool 2>&1 | filt | tail -3
-  echo "--- pytest tests/errors_test.py -k max_unpool2d"
-  PYTHONPATH=. $PY -m pytest -q -p no:cacheprovider tests/errors_test.py -k max_unpool2d 2>&1 | filt | tail -3
-  echo "--- bazel, as CI runs it"
-  for T in "//tests:ops_unit_test_tpu-v6e" "//tests:errors_test_tpu" "//tests:ops_test_tpu-v6e"; do
-    bazel test "$T" --test_filter="*unpool*" --config=no_rbe --local_test_jobs=1 \
+  echo "--- bazel, as CI runs it (errors_test needs --test_mode=tpu, which only the bazel target passes)"
+  # ops_test does not expand globs in --test_filter; it needs the TestCase.test_name prefix form.
+  for TF in "//tests:ops_unit_test_tpu-v6e *unpool*" "//tests:errors_test_tpu *unpool*" \
+            "//tests:ops_test_tpu-v6e TestOps.test_max_unpool"; do
+    set -- $TF
+    bazel test "$1" --test_filter="$2" --config=no_rbe --local_test_jobs=1 \
       --cache_test_results=no --test_output=errors 2>&1 \
       | grep -E "^//|PASSED|FAILED|Executed|ERROR|NO STATUS|no test" | tail -4
+    LOGDIR=${1#//}; LOGDIR=bazel-testlogs/${LOGDIR/:/\/}
+    echo "   tests run: $(find -L "$LOGDIR" -name test.log 2>/dev/null | xargs grep -h "^Ran " | awk '{s+=$2} END {print s+0}')"
   done
 } > "$RES" 2>&1
 cat "$RES" | tee -a "$SUM"
