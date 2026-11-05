@@ -330,3 +330,24 @@ branch `explainability-example` (c6ac51ffb), in the dev.to draft and above in §
 ## TODO
 - Captum LIG + torch.compile(backend="tpu"): find which CPU index tensor reaches the compiled graph; fix in Captum or document.
 - Inseq device allow-list PR; torch_tpu examples/docs entry; precision-guide numbers (#5727); #4409 triage comment.
+
+## #6105 review rework (2026-11-05)
+
+basioli-k's nine inline comments on `max_unpool_aten_kernels.cc` are addressed in d4c4bd843 (local, on
+`max-unpool2d`, not pushed): the lowering now calls `BuildScatterShlo(..., ScatterOp::kReplace)`;
+validation is split into `ValidateMaxUnpoolInputs` (Status) and `ComputeOutputDimensions`
+(`ConcreteSizeToDimensions`); `MaxUnpoolOut` writes into `out` and the non-out kernels allocate
+`MakeEmptyTensor({0})` and call it; the explicit resize stays only on the zero-size path (`DispatchOpOut`
+resizes itself); `NumElements` replaces the hand-rolled products. Input dtype is now floating-point only,
+matching CPU torch 2.11, where bool, every integer dtype, complex64 and float8 all fail with
+`"max_unpool2d" not implemented for '...'`. New test `test_max_unpool2d_non_floating_point_input`.
+Draft replies: `comment_6105_review_replies.md`. Patch: `pr6105_rework.patch` (untracked).
+
+Testing: the VM was mid-chain (logaddexp2 run, six op branches queued). The chain loop was stopped and
+`scripts/vm_pr6105_rework.sh` queued on the VM: it waits for the logaddexp2 run by PID, checks out
+`origin/max-unpool2d` plus the patch, builds a wheel (different XLA pin from build-base, so XLA rebuilds),
+runs `ops_unit_test -k unpool`, `errors_test -k max_unpool2d` and the three bazel targets with
+`--test_filter=*unpool*`, then restarts the chain with std_mean, nansum, trace, addbmm, smooth_l1_loss,
+huber_loss. Output: `~/pr6105_rework.summary` (ends with ALL DONE), `~/results_pr6105_rework.txt`.
+Lesson: inside `gcloud ... ssh --command`, `pgrep -f PATTERN` matches the `bash -c` wrapper itself unless
+the pattern is anchored (`^bash /home/...`).
