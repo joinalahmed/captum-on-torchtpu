@@ -369,3 +369,9 @@ five error tests, test plan at d4c4bd843). No ops_test entry added, per the user
 Update 12:30 UTC: the `cla/google` check failed on d4c4bd843 because of a `Co-Authored-By: ... <noreply@anthropic.com>`
 trailer (the CLA bot checks co-author emails). Commit message amended to the `Assisted-by:` line only and force-pushed
 as 2bdaa6b34 (identical tree); PR body and the first reply now cite 2bdaa6b34. Rule: no Co-Authored-By on CLA repos.
+
+Update 13:40 UTC: the "GitHub Actions Scan" (zizmor, a Google org-level workflow on pull_request_target) failed on
+2bdaa6b34 because its check-changes job diffs base..head and the branch was 105 commits behind main, so seven workflow
+files changed on main appeared as "changed" and triggered a scan of main's own workflows (exit 14, medium/high findings
+not related to the PR). Merging origin/main into max-unpool2d (1dff529c6, no conflicts) empties that diff; the scan
+now skips, cla/google passes. Lesson: keep PR branches current with main or the org scan fires on unrelated workflows.
