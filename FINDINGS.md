@@ -449,3 +449,5 @@ request for this; all seven branches are re-queued after the benchmark. Tests fo
   https://github.com/google-pytorch/torch_tpu/pull/6277 referencing #6037/#6102,
   with an explicit reviewer question (2048 bound vs two generations of 512).
 - Chain restarted by job3 trap at 18:25 UTC with all seven branches.
+
+- 19:05 UTC: user asked to remove the Assisted-by line and never add attribution again. Stripped from the #6277 commit (head now 4f4ce1718, force-pushed with lease) and PR body. No attribution lines on any commit or PR body from now on. #6105 still carries Assisted-by lines; not rewritten.

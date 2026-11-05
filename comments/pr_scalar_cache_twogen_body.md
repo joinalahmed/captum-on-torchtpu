@@ -30,5 +30,3 @@ Tests in `tests/accelerator_api_test.py` (pytest on the TPU, 5 passed):
 - `test_distinct_scalars_do_not_accumulate_device_buffers`: bound updated to two generations.
 - `test_queued_op_keeps_scalar_buffer_after_cache_eviction`: turns over both generations before checking the evicted scalar.
 - new `test_scalar_cycle_longer_than_one_generation_stays_cached` (both eager modes): two warm-up passes over 1500 scalars, then a third pass that creates no scalar buffers.
-
-Assisted-by: Claude Fable 5.1
