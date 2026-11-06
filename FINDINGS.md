@@ -463,3 +463,13 @@ request for this; all seven branches are re-queued after the benchmark. Tests fo
 - Rewrote in place (rebase onto own merge-base with --exec amend; trees unchanged) and force-pushed 13 branches: logaddexp b298673e1, logaddexp2 7830a7a3b, std_mean d7248aac9, nansum 7cf42a236, trace c97e7f42d, addbmm 6ab08af93, smooth_l1_loss 0d08b919e, huber_loss 46d2ec0bb, docs-memory-apis 054987052, dynamism-denylist-triage e506fc8f6, explainability-example c1ca06405, loader-import-error-context 068961749, missing-ops-batch a94b5d9c9. Closed #6102 branch recreated as 99aa3d587 + the single commit (merge dropped), body line removed.
 - Not touched: cpu-view-args-split-compile (#6106, approved by basioli-k; 2 commits with attribution). Force-pushing could dismiss the approval; left for the user to decide.
 - Chain impact: the running std_mean run holds the old SHA 043c512a2; later runs fetch the new SHAs with identical trees. The classifier blocks filter-branch + `git branch -f` + rm combos; rebase --exec amend per branch is allowed.
+
+## 2026-11-06 ~09:30 UTC — repo study done; items 1 and 2 prepared on fork branches (untested)
+
+- Four studies in notes/study_*.md, synthesis notes/torch_tpu_contributor_guide.md; memory pointer saved. Key: push-after-approval resets the champion's import approval; op tests in ops_unit_test.py; every error macro needs tpu=+gpu= tests or ERROR_COV_INFEASIBLE; error_coverage_data.yaml is a presubmit gate; expected strings single-line triple-quoted, no parens.
+- Item 1 (build bug) prepared as two alternative branches on the fork, both off origin/main a43dc0aba:
+  - no-rbe-keeps-sandbox 7eb558ba3: .bazelrc no_rbe drops --config=local, keeps tpu_envvars + standalone TestRunner.
+  - torch-headers-virtual-includes 4183ebfc3: pip_parse_targets.bzl exposes each include root via strip_include_prefix (virtual include tree); torch_headers aggregates. Risk: the old NOTE about a Bazel strip_include_prefix issue; needs layering_check build.
+  - Issue draft: comments/issue_standalone_build_protobuf_shadowing.md (not posted).
+- Item 2 prepared: im2col-error-coverage 8220d1812: 4 int[2] checks marked ERROR_COV_INFEASIBLE ("PyTorch catches this first."), 2 error tests (2-D input; kernel larger than input) with CUDA 2.11 messages from aten/src/ATen/native/im2col_shape_check.h, ledger line → remaining 0, infeasible 4. Unverified on hardware; gpu strings unverified on GPU.
+- scripts/vm_test_prepared_branches.sh validates all three on the VM (stops the chain, baseline fail + three passes + error_coverage_test, restarts chain). Not run: chain is mid std_mean; run it in the next gap or when the user says so.
