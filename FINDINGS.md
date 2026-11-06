@@ -473,3 +473,5 @@ request for this; all seven branches are re-queued after the benchmark. Tests fo
   - Issue draft: comments/issue_standalone_build_protobuf_shadowing.md (not posted).
 - Item 2 prepared: im2col-error-coverage 8220d1812: 4 int[2] checks marked ERROR_COV_INFEASIBLE ("PyTorch catches this first."), 2 error tests (2-D input; kernel larger than input) with CUDA 2.11 messages from aten/src/ATen/native/im2col_shape_check.h, ledger line → remaining 0, infeasible 4. Unverified on hardware; gpu strings unverified on GPU.
 - scripts/vm_test_prepared_branches.sh validates all three on the VM (stops the chain, baseline fail + three passes + error_coverage_test, restarts chain). Not run: chain is mid std_mean; run it in the next gap or when the user says so.
+
+- 2026-11-06 ~15:10 UTC: benawilson requested changes on #6277 (rename young/old → fresh/stale). Renamed, reworded comments and commit message, rebased on 48d8a1e3c; force-pushed head 7369c5150 and replied inline (discussion_r4495612192). No attribution lines. Awaiting re-review.
